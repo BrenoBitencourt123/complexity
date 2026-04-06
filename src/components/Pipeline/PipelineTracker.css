@@ -1,0 +1,126 @@
+/* ═══════════════════════════════════════════════════
+   Pipeline Tracker Styles
+   ═══════════════════════════════════════════════════ */
+
+.pipeline-tracker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: var(--space-6) var(--space-8);
+  background: var(--surface-glass);
+  border-bottom: 1px solid var(--surface-border);
+  backdrop-filter: blur(12px);
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+}
+
+.pipeline-step {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-full);
+  transition: all var(--transition-base);
+  position: relative;
+  cursor: default;
+}
+
+.pipeline-step-number {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  border: 2px solid var(--surface-border);
+  background: var(--bg-tertiary);
+  color: var(--text-muted);
+  transition: all var(--transition-base);
+  flex-shrink: 0;
+}
+
+.pipeline-step-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.pipeline-step-name {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-muted);
+  transition: color var(--transition-base);
+  white-space: nowrap;
+}
+
+.pipeline-step-model {
+  font-size: 10px;
+  color: var(--text-muted);
+  opacity: 0.5;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.pipeline-connector {
+  width: 40px;
+  height: 2px;
+  background: var(--surface-border);
+  flex-shrink: 0;
+  transition: background var(--transition-base);
+  margin: 0 var(--space-1);
+}
+
+/* States */
+.pipeline-step.completed .pipeline-step-number {
+  background: var(--success);
+  border-color: var(--success);
+  color: white;
+}
+
+.pipeline-step.completed .pipeline-step-name {
+  color: var(--success);
+}
+
+.pipeline-step.active .pipeline-step-number {
+  background: var(--brand-primary);
+  border-color: var(--brand-primary);
+  color: white;
+  box-shadow: 0 0 16px var(--brand-glow);
+  animation: glow 2s infinite;
+}
+
+.pipeline-step.active .pipeline-step-name {
+  color: var(--text-primary);
+}
+
+.pipeline-step.review .pipeline-step-number {
+  background: var(--warning);
+  border-color: var(--warning);
+  color: white;
+}
+
+.pipeline-step.review .pipeline-step-name {
+  color: var(--warning);
+}
+
+.pipeline-connector.completed {
+  background: var(--success);
+}
+
+.pipeline-connector.active {
+  background: linear-gradient(90deg, var(--success), var(--brand-primary));
+}
+
+/* Package Ready */
+.pipeline-step.package .pipeline-step-number {
+  background: var(--brand-gradient);
+  border: none;
+  color: white;
+  width: 36px;
+  height: 36px;
+  font-size: 18px;
+  box-shadow: var(--shadow-glow-strong);
+}
