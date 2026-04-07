@@ -197,7 +197,8 @@ export function usePipeline({ onAgentComplete } = {}) {
       
       let finalRoteiro = roteiroInicial;
       try {
-        const qaJson = JSON.parse(qaResultText.replace(/```json/g, '').replace(/```/g, ''));
+        const jsonMatch = qaResultText.match(/\{[\s\S]*\}/);
+        const qaJson = JSON.parse(jsonMatch ? jsonMatch[0] : qaResultText);
         if (qaJson.status === 'reprovado_e_corrigido' && qaJson.roteiro_final) {
           finalRoteiro = qaJson.roteiro_final;
           console.log('[QA] Roteiro consertado automaticamente. Motivo: ', qaJson.motivo);
@@ -306,8 +307,9 @@ export function usePipeline({ onAgentComplete } = {}) {
       executarDiretorVisual,
       executarDistribuidor,
     ];
+    updateState({ error: null });
     runners[stepIndex]();
-  }, [executarEstrategista, executarRoteirista, executarDiretorVisual, executarDistribuidor]);
+  }, [executarEstrategista, executarRoteirista, executarDiretorVisual, executarDistribuidor, updateState]);
 
   // ─── Reset ───
   const reset = useCallback(() => {

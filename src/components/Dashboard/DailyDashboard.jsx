@@ -51,7 +51,7 @@ export default function DailyDashboard({
     if (!weekPlan && !isGenerating && hasApiKey) {
       generatePlan();
     }
-  }, [weekPlan, isGenerating, hasApiKey, generatePlan]);
+  }, [weekPlan, isGenerating, hasApiKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Ordena por horário
   const sortedTasks = [...tasks].sort((a, b) =>

@@ -4,9 +4,10 @@
 // ═══════════════════════════════════════════════════
 
 import { FFmpeg } from '@ffmpeg/ffmpeg';
-import { fetchFile, toBlobURL } from '@ffmpeg/util';
+import { fetchFile } from '@ffmpeg/util';
 
-const FFMPEG_CDN = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
+// Arquivos copiados para /public — servidos pelo mesmo origin, sem CORS/COEP issues
+const BASE_URL = window.location.origin;
 
 let ffmpegInstance = null;
 
@@ -24,8 +25,8 @@ export async function loadFFmpeg(onLog) {
   }
 
   await ffmpeg.load({
-    coreURL: await toBlobURL(`${FFMPEG_CDN}/ffmpeg-core.js`, 'text/javascript'),
-    wasmURL: await toBlobURL(`${FFMPEG_CDN}/ffmpeg-core.wasm`, 'application/wasm'),
+    coreURL: `${BASE_URL}/ffmpeg-core.js`,
+    wasmURL: `${BASE_URL}/ffmpeg-core.wasm`,
   });
 
   ffmpegInstance = ffmpeg;

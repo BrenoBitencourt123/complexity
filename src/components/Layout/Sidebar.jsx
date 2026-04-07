@@ -163,7 +163,7 @@ export default function Sidebar({
             gap: 'var(--space-2)',
           }}>
             <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-              💰 Sessão ({sessionUsage.calls} {sessionUsage.calls === 1 ? 'chamada' : 'chamadas'})
+              💰 Total ({sessionUsage.calls} {sessionUsage.calls === 1 ? 'chamada' : 'chamadas'})
             </span>
             <span style={{
               fontSize: '11px',

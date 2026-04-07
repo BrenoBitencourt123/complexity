@@ -353,37 +353,46 @@ Sua missão é pegar o conteúdo produzido (cujo formato principal de hoje é ${
 
 MARCA: ${ATLAS_BRAND.nome} — ${ATLAS_BRAND.descricao}
 
-Gere o PACOTE DE DISTRIBUIÇÃO COMPLETO neste formato:
+Gere o PACOTE DE DISTRIBUIÇÃO COMPLETO exatamente neste formato (os separadores e labels devem ser idênticos):
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 PACOTE DE DISTRIBUIÇÃO MULTI-FORMATO
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-─── 1. SHORTS / REELS / TIKTOK (VÍDEO PRINCIPAL) ───
-TÍTULO: [máx 100 chars — gancho forte]
-DESCRIÇÃO: [150-200 chars — CTA + menção ao Atlas]
-HASHTAGS: [20-25: mix nicho + trending + marca]
+--- TIKTOK ---
+TÍTULO:
+[máx 100 chars — gancho forte]
+DESCRIÇÃO:
+[150-200 chars — contexto + CTA + menção ao Atlas]
+HASHTAGS TIKTOK:
+[20-25 hashtags: mix nicho + trending + marca]
 
-─── 2. ADAPTAÇÃO PARA FEED (CARROSSEL) ───
-[Como transformar o roteiro em post estático/carrossel para o Instagram]
-CAPA (IMAGEM 1): [Texto do slide 1]
-CONTEÚDO (IMAGEM 2 E 3): [Resumo em bullet points]
-CTA (IMAGEM 4): [Call to action]
+--- INSTAGRAM REELS ---
+LEGENDA COMPLETA:
+[Copy completa para legenda: hook + valor + CTA + menção ao Atlas. Máx 2200 chars.]
+HASHTAGS INSTAGRAM:
+[30 hashtags relevantes]
 
-─── 3. EXTENSÃO PARA STORIES (3 TELAS) ───
-STORY 1 (ENQUETE/INTERAÇÃO): [O que perguntar]
-STORY 2 (REVELAÇÃO): [Prova social ou continuação lógica do Roteiro]
-STORY 3 (CONVERSÃO/LINK): [Chamada forte pro Link na Bio do Atlas]
+--- YOUTUBE SHORTS ---
+TÍTULO:
+[máx 100 chars — otimizado para busca no YT]
+DESCRIÇÃO:
+[250 chars — SEO + links + CTA]
+TAGS:
+[15-20 tags separadas por vírgula]
 
-─── 4. GERAL ───
-MELHOR HORÁRIO PARA POSTAR: [Horário]
-THUMBNAIL SUGERIDA: [descrição do frame ideal]
-AVISO DE TENDÊNCIA: [urgência de postagem]
+--- GERAL ---
+MELHOR HORÁRIO PARA POSTAR:
+[Melhor dia da semana + horário + justificativa breve]
+THUMBNAIL SUGERIDA:
+[Descrição do frame ideal para thumbnail]
+AVISO DE TENDÊNCIA:
+[Urgência de postagem se houver trend relevante, ou "Sem urgência especial"]
 
 REGRAS:
 - Nunca use clickbait vazio.
-- CTA focado no Atlas SEMPRE presente no final.
-- Se a produção principal já for Carrossel ou Stories, foque em otimizar a copy nas sessões 2 ou 3 correspondentes.`,
+- CTA focado no Atlas SEMPRE presente.
+- Labels acima são obrigatórios — não os altere nem reordene.`,
 
     user: `CRIAR PACOTE DE DISTRIBUIÇÃO EXPANSO PARA:
 

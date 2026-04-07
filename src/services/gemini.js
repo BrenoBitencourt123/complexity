@@ -13,15 +13,25 @@ const PRECOS_POR_MODELO = {
   'gemini-2.5-flash': { input: 0.855, output:  3.42 },
 };
 
-// ─── Acumulador de uso da sessão ───
-let sessionUsage = { promptTokens: 0, outputTokens: 0, calls: 0, estimatedCostBRL: 0 };
+// ─── Acumulador de custo total (persiste no localStorage) ───
+const USAGE_KEY = 'atlas-agency-total-usage';
+
+function carregarUsage() {
+  try {
+    const saved = localStorage.getItem(USAGE_KEY);
+    if (saved) return JSON.parse(saved);
+  } catch {}
+  return { promptTokens: 0, outputTokens: 0, calls: 0, estimatedCostBRL: 0 };
+}
+
+let sessionUsage = carregarUsage();
 
 export function getSessionUsage() {
   return { ...sessionUsage };
 }
 
 export function resetSessionUsage() {
-  sessionUsage = { promptTokens: 0, outputTokens: 0, calls: 0, estimatedCostBRL: 0 };
+  // Mantido por compatibilidade mas não limpa mais — custo é cumulativo
 }
 
 function acumularUsage(modelName, usageMetadata) {
@@ -34,6 +44,7 @@ function acumularUsage(modelName, usageMetadata) {
   sessionUsage.outputTokens += output;
   sessionUsage.calls += 1;
   sessionUsage.estimatedCostBRL += custo;
+  try { localStorage.setItem(USAGE_KEY, JSON.stringify(sessionUsage)); } catch {}
 }
 
 /**

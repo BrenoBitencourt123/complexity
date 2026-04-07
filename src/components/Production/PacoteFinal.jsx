@@ -155,7 +155,7 @@ export default function PacoteFinal({ pipeline, onReset, onExport }) {
           <h3 className="pacote-section-title">🖼️ Prompts de Imagem por Cena</h3>
           <div className="prompts-cenas-list">
             {visuais.map((visual, i) => {
-              const cena = cenas.find(c => c.numero === visual.numero) || {};
+              const cena = cenas.find(c => String(c.numero) === String(visual.numero)) || {};
               return (
                 <div key={i} className="prompt-cena-card">
                   <div className="prompt-cena-header">

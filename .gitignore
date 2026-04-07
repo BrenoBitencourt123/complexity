@@ -26,3 +26,7 @@ dist-ssr
 # Ferramentas locais
 .claude/
 .obsidian/
+
+# FFmpeg WASM (binários grandes — copiar de node_modules/@ffmpeg/core/dist/umd/)
+public/ffmpeg-core.js
+public/ffmpeg-core.wasm

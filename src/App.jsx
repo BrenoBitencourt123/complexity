@@ -26,7 +26,7 @@ export default function App() {
   const [currentView, setCurrentView] = useState('production');
   const [testingApi, setTestingApi] = useState(false);
   const [apiTestResult, setApiTestResult] = useState(null);
-  const [sessionUsage, setSessionUsage] = useState({ promptTokens: 0, outputTokens: 0, calls: 0, estimatedCostBRL: 0 });
+  const [sessionUsage, setSessionUsage] = useState(() => getSessionUsage());
   const [previewStep, setPreviewStep] = useState(null);
 
   // Ref para rastrear o ID da produção em andamento sem causar re-renders
@@ -97,7 +97,6 @@ export default function App() {
   // ─── Reset ───
   const handleReset = useCallback(() => {
     pipeline.reset();
-    setSessionUsage({ promptTokens: 0, outputTokens: 0, calls: 0, estimatedCostBRL: 0 });
     setCurrentView('production');
   }, [pipeline]);
 

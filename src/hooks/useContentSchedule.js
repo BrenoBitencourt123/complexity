@@ -1,21 +1,22 @@
 // ═══════════════════════════════════════════════════
 // useContentSchedule — Plano semanal + status de tarefas
+// Fonte de verdade: Supabase (tabela content_plans)
 // ═══════════════════════════════════════════════════
 
 import { useState, useCallback, useEffect } from 'react';
 import { generateWeeklyPlan } from '../services/contentPlanner.js';
+import { supabase } from '../lib/supabase.js';
 
-// ─── Chave do localStorage baseada no número da semana ISO ───
+// ─── Chave da semana ISO (ex: "2026-W15") ───
 function getISOWeek(date) {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);
   d.setDate(d.getDate() + 4 - (d.getDay() || 7));
   const yearStart = new Date(d.getFullYear(), 0, 1);
-  return `${d.getFullYear()}-W${String(Math.ceil(((d - yearStart) / 86400000 + 1) / 7)).padStart(2, '0')}`;
+  yearStart.setHours(0, 0, 0, 0);
+  const weekNum = Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
+  return `${d.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
 }
-
-const weekKey = () => `atlas-week-plan-${getISOWeek(new Date())}`;
-const statusKey = () => `atlas-task-status-${getISOWeek(new Date())}`;
 
 // ─── Task ID: "2026-04-07-0" (data + índice) ───
 export function makeTaskId(date, index) {
@@ -23,61 +24,66 @@ export function makeTaskId(date, index) {
 }
 
 export function useContentSchedule() {
+  // Chave calculada UMA vez no mount — nunca muda durante a sessão
+  const [currentWeekKey] = useState(() => getISOWeek(new Date()));
+
   const [weekPlan, setWeekPlan] = useState(null);
   const [taskStatuses, setTaskStatuses] = useState({});
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().slice(0, 10)
   );
-  const [currentWeekKey, setCurrentWeekKey] = useState(() => weekKey());
 
-  // ─── Carrega plano e status do localStorage; detecta virada de semana ───
+  // ─── Carrega plano do Supabase no mount ───
   useEffect(() => {
-    const savedPlan = localStorage.getItem(currentWeekKey);
-    if (savedPlan) {
-      try { setWeekPlan(JSON.parse(savedPlan)); } catch { /* ignora cache corrompido */ }
-    }
+    async function load() {
+      const { data, error } = await supabase
+        .from('content_plans')
+        .select('*')
+        .eq('week_key', currentWeekKey)
+        .maybeSingle();
 
-    const savedStatuses = localStorage.getItem(statusKey());
-    if (savedStatuses) {
-      try { setTaskStatuses(JSON.parse(savedStatuses)); } catch {}
-    }
-
-    // Detecta virada de semana quando o usuário volta à aba
-    const handleVisibilityChange = () => {
-      const latest = weekKey();
-      if (latest !== currentWeekKey) {
-        setWeekPlan(null);
-        setTaskStatuses({});
-        setCurrentWeekKey(latest);
+      if (error) {
+        console.error('Erro ao carregar plano semanal:', error);
+        return;
       }
-    };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (data) {
+        setWeekPlan(data.plan_data);
+        setTaskStatuses(data.task_statuses || {});
+      }
+    }
+    load();
   }, [currentWeekKey]);
 
-  // ─── Gera novo plano via API ───
+  // ─── Gera novo plano via API e salva no Supabase ───
   const generatePlan = useCallback(async () => {
     setIsGenerating(true);
     try {
       const plan = await generateWeeklyPlan();
       setWeekPlan(plan);
-      localStorage.setItem(weekKey(), JSON.stringify(plan));
+      setTaskStatuses({});
+
+      const { error } = await supabase.from('content_plans').upsert({
+        week_key: currentWeekKey,
+        plan_data: plan,
+        task_statuses: {},
+        updated_at: new Date().toISOString(),
+      });
+      if (error) console.error('Erro ao salvar plano no Supabase:', error);
     } catch (err) {
       console.error('Erro ao gerar plano semanal:', err);
     } finally {
       setIsGenerating(false);
     }
-  }, []);
+  }, [currentWeekKey]);
 
-  // ─── Regenera o plano (descarta o cache atual) ───
-  const regeneratePlan = useCallback(() => {
-    localStorage.removeItem(weekKey());
+  // ─── Regenera o plano (apaga o atual e gera novo) ───
+  const regeneratePlan = useCallback(async () => {
     setWeekPlan(null);
     setTaskStatuses({});
-    localStorage.removeItem(statusKey());
+    await supabase.from('content_plans').delete().eq('week_key', currentWeekKey);
     generatePlan();
-  }, [generatePlan]);
+  }, [currentWeekKey, generatePlan]);
 
   // ─── Toggle status de uma tarefa (done ↔ pending) ───
   const toggleTaskDone = useCallback((taskId) => {
@@ -86,10 +92,14 @@ export function useContentSchedule() {
         ...prev,
         [taskId]: prev[taskId] === 'done' ? 'pending' : 'done',
       };
-      localStorage.setItem(statusKey(), JSON.stringify(next));
+      // Salva em background no Supabase
+      supabase.from('content_plans')
+        .update({ task_statuses: next, updated_at: new Date().toISOString() })
+        .eq('week_key', currentWeekKey)
+        .then(({ error }) => { if (error) console.error('Erro ao salvar status:', error); });
       return next;
     });
-  }, []);
+  }, [currentWeekKey]);
 
   // ─── Retorna tarefas de uma data específica ───
   const getTasksForDate = useCallback((date) => {
@@ -103,7 +113,7 @@ export function useContentSchedule() {
     let total = 0;
     let done = 0;
     weekPlan.dias.forEach(day => {
-      day.tarefas?.forEach((_, i) => {
+      (day.tarefas || []).forEach((_, i) => {
         total++;
         if (taskStatuses[makeTaskId(day.data, i)] === 'done') done++;
       });

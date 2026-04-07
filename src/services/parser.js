@@ -135,41 +135,41 @@ export function parseMetaRoteiro(texto) {
 export function parseVisuais(texto) {
   try {
     const visuais = [];
-    // Split por headers de cena visual
-    const blocos = texto.split(/━{4,}[^━]*?(?:VISUAL|IMAGEM|CENA VISUAL)/i);
 
-    for (let i = 1; i < blocos.length; i++) {
-      const bloco = 'VISUAL — CENA' + blocos[i];
+    // Localiza cada header "VISUAL — CENA XX | NOME" diretamente, sem depender
+    // do tipo de separador que o LLM gerou (━, ─, —, etc.) e com | opcional.
+    // Flag 'm' garante que ^ só bate no início de linha, evitando falsos matches no conteúdo.
+    const headerRegex = /^VISUAL\s*[—–\-]{1,3}\s*CENA\s+(\d+)\s*[|:]?\s*([^\n]+)/gim;
+    const positions = [];
+    let m;
+    while ((m = headerRegex.exec(texto)) !== null) {
+      positions.push({
+        start: m.index,
+        num: parseInt(m[1]),
+        nome: m[2].trim().replace(/[━─—\-\s]+$/, ''),
+      });
+    }
 
-      const headerMatch = bloco.match(/CENA\s+(\d+)\s*\|\s*(.+)/i);
-      if (!headerMatch) continue;
+    for (let i = 0; i < positions.length; i++) {
+      const start = positions[i].start;
+      const end = i + 1 < positions.length ? positions[i + 1].start : texto.length;
+      const bloco = texto.slice(start, end);
 
-      const visual = {
-        numero: parseInt(headerMatch[1]),
-        nome: headerMatch[2].trim().replace(/━+$/, '').trim(),
-      };
+      const visual = { numero: positions[i].num, nome: positions[i].nome };
 
-      // Descrição da cena
-      const descMatch = bloco.match(/DESCRIÇÃO DA CENA:\s*\n([\s\S]*?)(?=───\s*OPÇÃO A|$)/i);
+      // Descrição da cena — para antes de OPÇÃO A/B ou de qualquer separador
+      const descMatch = bloco.match(/DESCRIÇÃO DA CENA[^:]*:\s*\n([\s\S]*?)(?=\s*[-—–]{2,}\s*OPÇÃO|\s*OPÇÃO [AB]|$)/i);
       if (descMatch) visual.descricao = descMatch[1].trim();
 
-      // Opção A (tudo entre OPÇÃO A e OPÇÃO B)
-      const opcaoAMatch = bloco.match(/OPÇÃO A[\s\S]*?───\s*\n([\s\S]*?)(?=───\s*OPÇÃO B|$)/i);
-      if (opcaoAMatch) visual.opcaoA = opcaoAMatch[0].trim();
-
-      // Alternativa: capturar Opção A de forma mais ampla
-      if (!visual.opcaoA) {
-        const altA = bloco.match(/OPÇÃO A[^─]*([\s\S]*?)(?=OPÇÃO B|$)/i);
-        if (altA) visual.opcaoA = altA[0].trim();
+      // opcaoA / opcaoB — aceita variações como "—— OPÇÃO A ——", "OPÇÃO A:", etc.
+      const opcaoAIdx = bloco.search(/[-—–]*\s*OPÇÃO\s+A\b/i);
+      const opcaoBIdx = bloco.search(/[-—–]*\s*OPÇÃO\s+B\b/i);
+      if (opcaoAIdx !== -1) {
+        const endIdx = opcaoBIdx !== -1 ? opcaoBIdx : bloco.length;
+        visual.opcaoA = bloco.slice(opcaoAIdx, endIdx).trim();
       }
-
-      // Opção B
-      const opcaoBMatch = bloco.match(/OPÇÃO B[\s\S]*?───\s*\n([\s\S]*?)(?=━{4,}|$)/i);
-      if (opcaoBMatch) visual.opcaoB = opcaoBMatch[0].trim();
-
-      if (!visual.opcaoB) {
-        const altB = bloco.match(/OPÇÃO B[^─]*([\s\S]*?)$/i);
-        if (altB) visual.opcaoB = altB[0].trim();
+      if (opcaoBIdx !== -1) {
+        visual.opcaoB = bloco.slice(opcaoBIdx).trim();
       }
 
       visuais.push(visual);
@@ -269,6 +269,6 @@ export function parseDistribuicao(texto) {
     return result;
   } catch (error) {
     console.error('Erro ao parsear distribuição:', error);
-    return null;
+    return { tiktok: {}, instagram: {}, youtube: {}, geral: {} };
   }
 }
