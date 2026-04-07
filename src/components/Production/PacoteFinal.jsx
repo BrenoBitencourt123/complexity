@@ -1,37 +1,26 @@
 import { useState } from 'react';
-import { Card, Button, CopyBlock, Badge } from '../UI/index.jsx';
+import { Card, Button, CopyBlock } from '../UI/index.jsx';
 import { ELEVENLABS_CONFIG } from '../../utils/constants.js';
-import { formatarData, formatarDuracao, exportarComoMd } from '../../utils/formatters.js';
+import { formatarData, formatarDuracao, exportarComoMd, copiarTexto } from '../../utils/formatters.js';
+import VideoAssembler from './VideoAssembler.jsx';
 import '../Agents/AgentViews.css';
-
-const CHECKLIST_ITEMS = [
-  'Gerar imagens (Opção A ou B) para cada cena',
-  'Gerar áudio TTS com o script limpo',
-  'Montar no editor: 1 imagem por cena, sincronizar com o áudio',
-  'Adicionar texto na tela conforme indicado em cada cena',
-  'Adicionar música de fundo (instrumental, baixo volume)',
-  'Exportar em 1080x1920px, MP4, 30fps',
-  'Postar no horário indicado com legenda e hashtags do Distribuidor',
-];
+import './Production.css';
 
 export default function PacoteFinal({ pipeline, onReset, onExport }) {
-  const [checkedItems, setCheckedItems] = useState(new Set());
+  const [copiedIndex, setCopiedIndex] = useState(null);
 
-  const toggleItem = (index) => {
-    setCheckedItems(prev => {
-      const next = new Set(prev);
-      if (next.has(index)) {
-        next.delete(index);
-      } else {
-        next.add(index);
-      }
-      return next;
-    });
+  const handleCopyPrompt = async (texto, index) => {
+    await copiarTexto(texto);
+    setCopiedIndex(index);
+    setTimeout(() => setCopiedIndex(null), 1500);
   };
 
   const estrategia = pipeline.parsedOutputs.estrategia || {};
   const tts = pipeline.parsedOutputs.tts;
   const metaRoteiro = pipeline.parsedOutputs.metaRoteiro || {};
+  const cenas = pipeline.parsedOutputs.cenas || [];
+  const visuais = pipeline.parsedOutputs.visuais || [];
+  const consistencia = pipeline.parsedOutputs.consistencia;
 
   const handleExport = () => {
     const content = gerarMarkdownPacote(pipeline);
@@ -121,26 +110,82 @@ export default function PacoteFinal({ pipeline, onReset, onExport }) {
         </div>
       )}
 
-      {/* Checklist */}
+      {/* Guia de 3 passos */}
       <div className="pacote-section">
-        <h3 className="pacote-section-title">✅ Checklist de Montagem</h3>
-        <div className="checklist">
-          {CHECKLIST_ITEMS.map((item, i) => (
-            <div
-              key={i}
-              className={`checklist-item ${checkedItems.has(i) ? 'done' : ''}`}
-              onClick={() => toggleItem(i)}
-            >
-              <div className="checklist-checkbox">
-                {checkedItems.has(i) ? '✓' : ''}
-              </div>
-              <span>{i + 1}. {item}</span>
+        <h3 className="pacote-section-title">🚀 Como montar o vídeo</h3>
+        <div className="montagem-guide">
+          <div className="montagem-step">
+            <div className="montagem-step-num">1</div>
+            <div>
+              <strong>Gere o áudio</strong>
+              <p>Copie o script TTS acima → cole no <a href="https://elevenlabs.io" target="_blank" rel="noreferrer">ElevenLabs</a> com a voz Mateus → baixe o MP3.</p>
             </div>
-          ))}
+          </div>
+          <div className="montagem-step">
+            <div className="montagem-step-num">2</div>
+            <div>
+              <strong>Gere as imagens</strong>
+              <p>Copie cada prompt abaixo → gere no ChatGPT ou Gemini → baixe os PNGs em ordem.</p>
+            </div>
+          </div>
+          <div className="montagem-step">
+            <div className="montagem-step-num">3</div>
+            <div>
+              <strong>Monte aqui</strong>
+              <p>Suba o MP3 + as imagens no painel abaixo. O sistema monta o .mp4 automaticamente.</p>
+            </div>
+          </div>
         </div>
-        <p style={{ marginTop: 'var(--space-3)', fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
-          {checkedItems.size}/{CHECKLIST_ITEMS.length} concluídos
-        </p>
+      </div>
+
+      {/* Consistência visual */}
+      {consistencia && (
+        <div className="pacote-section">
+          <h3 className="pacote-section-title">🎨 Guia de Consistência Visual</h3>
+          <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginBottom: 'var(--space-2)' }}>
+            Cole este bloco no início de cada prompt de imagem para manter o estilo uniforme.
+          </p>
+          <CopyBlock text={consistencia} />
+        </div>
+      )}
+
+      {/* Prompts de imagem por cena */}
+      {visuais.length > 0 && (
+        <div className="pacote-section">
+          <h3 className="pacote-section-title">🖼️ Prompts de Imagem por Cena</h3>
+          <div className="prompts-cenas-list">
+            {visuais.map((visual, i) => {
+              const cena = cenas.find(c => c.numero === visual.numero) || {};
+              return (
+                <div key={i} className="prompt-cena-card">
+                  <div className="prompt-cena-header">
+                    <span className="prompt-cena-num">Cena {visual.numero}</span>
+                    <span className="prompt-cena-nome">{visual.nome}</span>
+                    {cena.duracao && (
+                      <span className="prompt-cena-dur">{cena.duracao}s</span>
+                    )}
+                    <button
+                      className={`prompt-copy-btn ${copiedIndex === i ? 'copied' : ''}`}
+                      onClick={() => handleCopyPrompt(visual.opcaoA || '', i)}
+                    >
+                      {copiedIndex === i ? '✓ Copiado' : 'Copiar'}
+                    </button>
+                  </div>
+                  <p className="prompt-cena-text">{visual.opcaoA}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Video Assembler */}
+      <div className="pacote-section">
+        <VideoAssembler
+          cenas={cenas}
+          visuais={visuais}
+          estrategia={estrategia}
+        />
       </div>
 
       {/* Actions */}

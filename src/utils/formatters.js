@@ -45,13 +45,6 @@ export async function copiarTexto(texto) {
 }
 
 /**
- * Gera ID único simples
- */
-export function gerarId() {
-  return Date.now().toString(36) + Math.random().toString(36).substring(2, 8);
-}
-
-/**
  * Trunca texto com reticências
  */
 export function truncar(texto, max = 100) {

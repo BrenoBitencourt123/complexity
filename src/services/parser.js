@@ -11,7 +11,8 @@ export function parseEstrategia(texto) {
     const campos = [
       'tema', 'angulo', 'objetivo', 'duracao_alvo',
       'duracao_segundos', 'estilo_visual', 'justificativa',
-      'cenas_estimadas', 'hook_sugerido', 'cta_sugerido',
+      'cenas_estimadas', 'laminas_estimadas', 'telas_estimadas',
+      'formato_imposto', 'hook_sugerido', 'cta_sugerido',
     ];
 
     for (const campo of campos) {
@@ -20,10 +21,19 @@ export function parseEstrategia(texto) {
       if (match) {
         let valor = match[1].trim().replace(/^"/, '').replace(/"$/, '');
         // Converter números
-        if (['duracao_segundos', 'cenas_estimadas'].includes(campo)) {
+        if (['duracao_segundos', 'cenas_estimadas', 'laminas_estimadas', 'telas_estimadas'].includes(campo)) {
           valor = parseInt(valor, 10) || 0;
         }
         result[campo] = valor;
+      }
+    }
+
+    // Fix: duracao_segundos pode não ser gerado pelo LLM — extrair de duracao_alvo
+    if (!result.duracao_segundos && result.duracao_alvo) {
+      const numeros = result.duracao_alvo.match(/\d+/g);
+      if (numeros) {
+        const vals = numeros.map(Number);
+        result.duracao_segundos = Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
       }
     }
 
@@ -35,58 +45,41 @@ export function parseEstrategia(texto) {
 }
 
 /**
- * Parseia as cenas do Roteirista
+ * Parseia as cenas do Roteirista (Ou Lâminas/Telas)
  */
 export function parseCenas(texto) {
   try {
     const cenas = [];
-    // Split por delimitadores de cena
     const blocos = texto.split(/━{4,}/);
 
     for (let i = 0; i < blocos.length; i++) {
       const bloco = blocos[i].trim();
 
-      // Detectar header de cena
-      const headerMatch = bloco.match(/CENA\s+(\d+)\s*\|\s*(.+?)\s*\|\s*(\d+)s?/i);
+      // Detectar header de cena/lâmina/tela
+      const headerMatch = bloco.match(/(?:CENA|LÂMINA|TELA)\s+(\d+)\s*\|\s*(.+?)(?:\s*\|\s*(\d+)s?)?(?=\n|$)/i);
       if (headerMatch) {
         const cena = {
           numero: parseInt(headerMatch[1]),
           nome: headerMatch[2].trim(),
-          duracaoHeader: parseInt(headerMatch[3]),
+          duracaoHeader: headerMatch[3] ? parseInt(headerMatch[3]) : null,
         };
 
-        // Pegar o conteúdo da cena (próximo bloco)
         const conteudo = blocos[i + 1] || bloco;
 
-        // Narração
-        const narracaoMatch = conteudo.match(/NARRAÇÃO:\s*\n?"([^"]*(?:"[^"]*)*?)"/is);
-        if (narracaoMatch) {
-          cena.narracao = narracaoMatch[1].trim();
-        }
+        const narracaoMatch = conteudo.match(/(?:NARRAÇÃO|CONTEÚDO):\s*\n?"?([^"]*(?:"[^"]*)*?)"?(?=\n\n|\nTEXTO|\nEMOÇÃO|\nDURAÇÃO|$)/is);
+        if (narracaoMatch) cena.narracao = narracaoMatch[1].trim();
 
-        // Texto na tela
-        const textoTelaMatch = conteudo.match(/TEXTO NA TELA:\s*\n?(.+?)(?=\n\n|\nEMOÇÃO|\nDURAÇÃO)/is);
-        if (textoTelaMatch) {
-          cena.textoNaTela = textoTelaMatch[1].trim();
-        }
+        const textoTelaMatch = conteudo.match(/(?:TEXTO NA TELA|TÍTULO NA IMAGEM):\s*\n?([\s\S]+?)(?=\n\n|\nEMOÇÃO|\nDURAÇÃO|$)/is);
+        if (textoTelaMatch) cena.textoNaTela = textoTelaMatch[1].trim();
 
-        // Emoção
-        const emocaoMatch = conteudo.match(/EMOÇÃO\s*\/?\s*ENERGIA:\s*\n?(.+?)(?=\n\n|\nDURAÇÃO)/is);
-        if (emocaoMatch) {
-          cena.emocao = emocaoMatch[1].trim();
-        }
+        const emocaoMatch = conteudo.match(/EMOÇÃO\s*\/?\s*ENERGIA:\s*\n?([\s\S]+?)(?=\n\n|\nDURAÇÃO|$)/is);
+        if (emocaoMatch) cena.emocao = emocaoMatch[1].trim();
 
-        // Duração
         const duracaoMatch = conteudo.match(/DURAÇÃO:\s*(\d+)s?/i);
-        if (duracaoMatch) {
-          cena.duracao = parseInt(duracaoMatch[1]);
-        } else {
-          cena.duracao = cena.duracaoHeader;
-        }
+        if (duracaoMatch) cena.duracao = parseInt(duracaoMatch[1]);
+        else cena.duracao = cena.duracaoHeader || 5; // Fallback para visuais sem narração
 
-        if (cena.narracao || cena.textoNaTela) {
-          cenas.push(cena);
-        }
+        if (cena.narracao || cena.textoNaTela) cenas.push(cena);
       }
     }
 
@@ -143,7 +136,7 @@ export function parseVisuais(texto) {
   try {
     const visuais = [];
     // Split por headers de cena visual
-    const blocos = texto.split(/━{4,}.*?VISUAL\s*—\s*CENA/i);
+    const blocos = texto.split(/━{4,}[^━]*?(?:VISUAL|IMAGEM|CENA VISUAL)/i);
 
     for (let i = 1; i < blocos.length; i++) {
       const bloco = 'VISUAL — CENA' + blocos[i];
@@ -213,13 +206,15 @@ export function parseDistribuicao(texto) {
   try {
     const result = { tiktok: {}, instagram: {}, youtube: {}, geral: {} };
 
+    const SEP = '[-─—]+';
+
     // TikTok
-    const tiktokSection = texto.match(/─+\s*TIKTOK\s*─+\s*\n([\s\S]*?)(?=─+\s*INSTAGRAM|$)/i);
+    const tiktokSection = texto.match(new RegExp(`${SEP}\\s*TIKTOK\\s*${SEP}\\s*\\n([\\s\\S]*?)(?=${SEP}\\s*INSTAGRAM|$)`, 'i'));
     if (tiktokSection) {
       const s = tiktokSection[1];
       const titulo = s.match(/TÍTULO:\s*\n?(.+)/i);
-      const desc = s.match(/DESCRIÇÃO:\s*\n?([\s\S]*?)(?=\nHASHTAGS|\n─|$)/i);
-      const hashtags = s.match(/HASHTAGS\s*(?:TIKTOK)?:\s*\n?([\s\S]*?)(?=\n─|$)/i);
+      const desc = s.match(/DESCRIÇÃO:\s*\n?([\s\S]*?)(?=\nHASHTAGS|\n[-─—]|$)/i);
+      const hashtags = s.match(/HASHTAGS\s*(?:TIKTOK)?:\s*\n?([\s\S]*?)(?=\n[-─—]|$)/i);
 
       result.tiktok = {
         titulo: titulo?.[1]?.trim() || '',
@@ -229,11 +224,11 @@ export function parseDistribuicao(texto) {
     }
 
     // Instagram
-    const instaSection = texto.match(/─+\s*INSTAGRAM\s*(?:REELS)?\s*─+\s*\n([\s\S]*?)(?=─+\s*YOUTUBE|$)/i);
+    const instaSection = texto.match(new RegExp(`${SEP}\\s*INSTAGRAM\\s*(?:REELS)?\\s*${SEP}\\s*\\n([\\s\\S]*?)(?=${SEP}\\s*YOUTUBE|$)`, 'i'));
     if (instaSection) {
       const s = instaSection[1];
-      const legenda = s.match(/LEGENDA\s*(?:COMPLETA)?:\s*\n?([\s\S]*?)(?=\nHASHTAGS|\n─|$)/i);
-      const hashtags = s.match(/HASHTAGS\s*(?:INSTAGRAM)?:\s*\n?([\s\S]*?)(?=\n─|$)/i);
+      const legenda = s.match(/LEGENDA\s*(?:COMPLETA)?:\s*\n?([\s\S]*?)(?=\nHASHTAGS|\n[-─—]|$)/i);
+      const hashtags = s.match(/HASHTAGS\s*(?:INSTAGRAM)?:\s*\n?([\s\S]*?)(?=\n[-─—]|$)/i);
 
       result.instagram = {
         legenda: legenda?.[1]?.trim() || '',
@@ -242,12 +237,12 @@ export function parseDistribuicao(texto) {
     }
 
     // YouTube
-    const ytSection = texto.match(/─+\s*YOUTUBE\s*(?:SHORTS)?\s*─+\s*\n([\s\S]*?)(?=─+\s*GERAL|$)/i);
+    const ytSection = texto.match(new RegExp(`${SEP}\\s*YOUTUBE\\s*(?:SHORTS)?\\s*${SEP}\\s*\\n([\\s\\S]*?)(?=${SEP}\\s*GERAL|$)`, 'i'));
     if (ytSection) {
       const s = ytSection[1];
       const titulo = s.match(/TÍTULO:\s*\n?(.+)/i);
-      const desc = s.match(/DESCRIÇÃO:\s*\n?([\s\S]*?)(?=\nTAGS|\n─|$)/i);
-      const tags = s.match(/TAGS:\s*\n?([\s\S]*?)(?=\n─|$)/i);
+      const desc = s.match(/DESCRIÇÃO:\s*\n?([\s\S]*?)(?=\nTAGS|\n[-─—]|$)/i);
+      const tags = s.match(/TAGS:\s*\n?([\s\S]*?)(?=\n[-─—]|$)/i);
 
       result.youtube = {
         titulo: titulo?.[1]?.trim() || '',
@@ -257,7 +252,7 @@ export function parseDistribuicao(texto) {
     }
 
     // Geral
-    const geralSection = texto.match(/─+\s*GERAL\s*─+\s*\n([\s\S]*?)$/i);
+    const geralSection = texto.match(new RegExp(`${SEP}\\s*GERAL\\s*${SEP}\\s*\\n([\\s\\S]*?)$`, 'i'));
     if (geralSection) {
       const s = geralSection[1];
       const horarios = s.match(/MELHOR HORÁRIO[\s\S]*?(?=\nTHUMBNAIL|$)/i);

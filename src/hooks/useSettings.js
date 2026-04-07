@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════════════════
 
 import { useState, useCallback, useEffect } from 'react';
-import { initGemini, isGeminiReady } from '../services/gemini.js';
+import { initGemini } from '../services/gemini.js';
 
 const STORAGE_KEY = 'atlas-agency-settings';
 
@@ -54,9 +54,7 @@ export function useSettings() {
 
   return {
     settings,
-    updateSetting,
     setApiKey,
     hasApiKey: !!settings.apiKey,
-    isReady: isGeminiReady(),
   };
 }

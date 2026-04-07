@@ -1,66 +1,98 @@
 // ═══════════════════════════════════════════════════
-// useHistory — CRUD de produções no localStorage
+// useHistory — CRUD de produções via Supabase
 // ═══════════════════════════════════════════════════
 
 import { useState, useCallback, useEffect } from 'react';
-import { gerarId } from '../utils/formatters.js';
-
-const STORAGE_KEY = 'atlas-agency-history';
+import { supabase } from '../lib/supabase.js';
 
 export function useHistory() {
-  const [producoes, setProducoes] = useState(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      return stored ? JSON.parse(stored) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [producoes, setProducoes] = useState([]);
 
+  // Load inicial via Supabase
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(producoes));
-    } catch (e) {
-      console.warn('Erro ao salvar histórico:', e);
+    async function loadProductions() {
+      const { data, error } = await supabase
+        .from('productions')
+        .select('*')
+        .order('created_at', { ascending: false });
+        
+      if (!error && data) {
+        setProducoes(data.map(d => ({
+          id: d.id,
+          tema: d.tema,
+          objetivo: d.objetivo,
+          formato: d.formato,
+          status: d.metadata?.status || 'rascunho',
+          criadoEm: d.created_at,
+          atualizadoEm: d.created_at,
+          dados: d.metadata?.dados || {}
+        })));
+      }
     }
-  }, [producoes]);
+    loadProductions();
+  }, []);
 
-  const criarProducao = useCallback((tema, objetivo) => {
+  const criarProducao = useCallback((tema, objetivo, formato = 'Shorts') => {
     const nova = {
-      id: gerarId(),
+      id: crypto.randomUUID(), // Gera um UUID válido para o banco
       tema,
       objetivo,
+      formato,
       status: 'rascunho',
       criadoEm: new Date().toISOString(),
       atualizadoEm: new Date().toISOString(),
-      etapaAtual: 0,
       dados: {},
     };
+    
+    // Atualiza optimisticamente a UI
     setProducoes(prev => [nova, ...prev]);
+
+    // Insere no banco em Background
+    supabase.from('productions').insert([{
+      id: nova.id,
+      tema: nova.tema,
+      objetivo: nova.objetivo,
+      formato: nova.formato,
+      metadata: { status: nova.status, dados: nova.dados }
+    }]).then(({ error }) => {
+      if (error) console.error("Erro ao salvar no Supabase:", error);
+    });
+
     return nova;
   }, []);
 
   const atualizarProducao = useCallback((id, updates) => {
-    setProducoes(prev =>
-      prev.map(p =>
-        p.id === id
-          ? { ...p, ...updates, atualizadoEm: new Date().toISOString() }
-          : p
-      )
-    );
+    setProducoes(prev => {
+      const novoState = prev.map(p => {
+        if (p.id === id) {
+          const producaoAtualizada = { ...p, ...updates, atualizadoEm: new Date().toISOString() };
+          
+          // Dispara update no banco em background
+          supabase.from('productions')
+            .update({ metadata: { status: producaoAtualizada.status, dados: producaoAtualizada.dados } })
+            .eq('id', id)
+            .then(({ error }) => { if (error) console.error('Erro Update:', error) });
+            
+          return producaoAtualizada;
+        }
+        return p;
+      });
+      return novoState;
+    });
   }, []);
 
   const deletarProducao = useCallback((id) => {
     setProducoes(prev => prev.filter(p => p.id !== id));
+    
+    supabase.from('productions')
+      .delete()
+      .eq('id', id)
+      .then(({ error }) => { if (error) console.error('Erro ao deletar:', error) });
   }, []);
 
   const getProducao = useCallback((id) => {
     return producoes.find(p => p.id === id);
   }, [producoes]);
-
-  const alterarStatus = useCallback((id, novoStatus) => {
-    atualizarProducao(id, { status: novoStatus });
-  }, [atualizarProducao]);
 
   return {
     producoes,
@@ -68,6 +100,5 @@ export function useHistory() {
     atualizarProducao,
     deletarProducao,
     getProducao,
-    alterarStatus,
   };
 }

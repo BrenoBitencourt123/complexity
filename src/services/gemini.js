@@ -7,11 +7,48 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 let genAI = null;
 
+// ─── Preços por milhão de tokens (R$, câmbio ~5,70) ───
+const PRECOS_POR_MODELO = {
+  'gemini-2.5-pro':   { input: 7.125, output: 57.00 },
+  'gemini-2.5-flash': { input: 0.855, output:  3.42 },
+};
+
+// ─── Acumulador de uso da sessão ───
+let sessionUsage = { promptTokens: 0, outputTokens: 0, calls: 0, estimatedCostBRL: 0 };
+
+export function getSessionUsage() {
+  return { ...sessionUsage };
+}
+
+export function resetSessionUsage() {
+  sessionUsage = { promptTokens: 0, outputTokens: 0, calls: 0, estimatedCostBRL: 0 };
+}
+
+function acumularUsage(modelName, usageMetadata) {
+  if (!usageMetadata) return;
+  const preco = PRECOS_POR_MODELO[modelName] || PRECOS_POR_MODELO['gemini-2.5-flash'];
+  const prompt = usageMetadata.promptTokenCount || 0;
+  const output = usageMetadata.candidatesTokenCount || 0;
+  const custo = (prompt / 1_000_000) * preco.input + (output / 1_000_000) * preco.output;
+  sessionUsage.promptTokens += prompt;
+  sessionUsage.outputTokens += output;
+  sessionUsage.calls += 1;
+  sessionUsage.estimatedCostBRL += custo;
+}
+
 /**
  * Inicializa o client Gemini com a API key
  */
 export function initGemini(apiKey) {
   genAI = new GoogleGenerativeAI(apiKey);
+}
+
+/**
+ * Retorna a instância inicializada do genAI
+ */
+export function getGenAI() {
+  if (!genAI) throw new Error('Gemini não inicializado. API key ausente.');
+  return genAI;
 }
 
 /**
@@ -23,15 +60,11 @@ export function isGeminiReady() {
 
 /**
  * Seleciona o modelo baseado no agente
- * Agentes 1-2 (Estrategista, Roteirista): gemini-1.5-pro → raciocínio estratégico
- * Agentes 3-4 (Diretor Visual, Distribuidor): gemini-1.5-flash → mais rápido, mecânico
+ * Agentes 1-2 (Estrategista, Roteirista): gemini-2.5-pro → raciocínio estratégico
+ * Agentes 3-4 (Diretor Visual, Distribuidor): gemini-2.5-flash → mais rápido, mecânico
  */
-function getModelForAgent(agentId) {
-  const proAgents = ['estrategista', 'roteirista'];
-  if (proAgents.includes(agentId)) {
-    return 'gemini-1.5-pro';
-  }
-  return 'gemini-1.5-flash';
+function getModelForAgent(_agentId) {
+  return 'gemini-2.5-flash';
 }
 
 /**
@@ -74,10 +107,15 @@ export async function runAgent(agentId, systemPrompt, userMessage, onChunk = nul
         }
       }
 
+      // usageMetadata disponível após consumir o stream
+      const response = await result.response;
+      acumularUsage(modelName, response.usageMetadata);
+
       return fullText;
     } else {
       // Non-streaming mode
       const result = await model.generateContent(userMessage);
+      acumularUsage(modelName, result.response.usageMetadata);
       return result.response.text();
     }
   } catch (error) {
@@ -106,7 +144,7 @@ export async function testConnection() {
   }
 
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
     const result = await model.generateContent('Responda apenas: ok');
     const text = result.response.text();
     return text.toLowerCase().includes('ok');

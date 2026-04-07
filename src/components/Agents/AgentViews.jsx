@@ -1,4 +1,5 @@
 import { Card, Badge, Button, CopyBlock, StreamingDots, Spinner } from '../UI/index.jsx';
+import { AGENT_STEPS } from '../../utils/constants.js';
 import './AgentViews.css';
 
 // ═══════════════════════════════════════════════════
@@ -45,7 +46,7 @@ export function AgentError({ error, onRetry }) {
 // ═══════════════════════════════════════════════════
 // AGENTE 1 — ESTRATEGISTA
 // ═══════════════════════════════════════════════════
-export function EstrategistaView({ data, rawOutput, onApprove, onRegenerate }) {
+export function EstrategistaView({ data, rawOutput, onApprove, onRegenerate, isPreview = false }) {
   if (!data && !rawOutput) return null;
 
   const estrategia = data || {};
@@ -58,7 +59,7 @@ export function EstrategistaView({ data, rawOutput, onApprove, onRegenerate }) {
           <h2 className="agent-title">Estrategista</h2>
           <p className="agent-subtitle">Análise de contexto e decisões estratégicas</p>
         </div>
-        <span className="agent-model-badge">gemini-1.5-pro</span>
+        <span className="agent-model-badge">{AGENT_STEPS[0].modelo.toUpperCase()}</span>
       </div>
 
       <Card>
@@ -146,14 +147,16 @@ export function EstrategistaView({ data, rawOutput, onApprove, onRegenerate }) {
           <CopyBlock text={rawOutput} />
         )}
 
-        <div className="agent-actions">
-          <Button variant="ghost" onClick={onRegenerate} icon="🔄">
-            Regenerar
-          </Button>
-          <Button variant="primary" onClick={onApprove} icon="✓">
-            Aprovar Estratégia
-          </Button>
-        </div>
+        {!isPreview && (
+          <div className="agent-actions">
+            <Button variant="ghost" onClick={onRegenerate} icon="🔄">
+              Regenerar
+            </Button>
+            <Button variant="primary" onClick={onApprove} icon="✓">
+              Aprovar Estratégia
+            </Button>
+          </div>
+        )}
       </Card>
     </div>
   );
@@ -162,7 +165,7 @@ export function EstrategistaView({ data, rawOutput, onApprove, onRegenerate }) {
 // ═══════════════════════════════════════════════════
 // AGENTE 2 — ROTEIRISTA
 // ═══════════════════════════════════════════════════
-export function RoteiristaView({ cenas, tts, metaRoteiro, rawOutput, onApprove, onRegenerate }) {
+export function RoteiristaView({ cenas, tts, metaRoteiro, rawOutput, onApprove, onRegenerate, isPreview = false }) {
   const hasParsed = cenas && cenas.length > 0;
 
   return (
@@ -173,7 +176,7 @@ export function RoteiristaView({ cenas, tts, metaRoteiro, rawOutput, onApprove, 
           <h2 className="agent-title">Roteirista</h2>
           <p className="agent-subtitle">Roteiro cena a cena para vídeo curto</p>
         </div>
-        <span className="agent-model-badge">gemini-1.5-pro</span>
+        <span className="agent-model-badge">{AGENT_STEPS[1].modelo.toUpperCase()}</span>
       </div>
 
       <Card>
@@ -238,14 +241,16 @@ export function RoteiristaView({ cenas, tts, metaRoteiro, rawOutput, onApprove, 
           <CopyBlock text={rawOutput || 'Sem dados'} />
         )}
 
-        <div className="agent-actions">
-          <Button variant="ghost" onClick={onRegenerate} icon="🔄">
-            Regenerar
-          </Button>
-          <Button variant="primary" onClick={onApprove} icon="✓">
-            Aprovar Roteiro
-          </Button>
-        </div>
+        {!isPreview && (
+          <div className="agent-actions">
+            <Button variant="ghost" onClick={onRegenerate} icon="🔄">
+              Regenerar
+            </Button>
+            <Button variant="primary" onClick={onApprove} icon="✓">
+              Aprovar Roteiro
+            </Button>
+          </div>
+        )}
       </Card>
     </div>
   );
@@ -257,7 +262,7 @@ export function RoteiristaView({ cenas, tts, metaRoteiro, rawOutput, onApprove, 
 import { useState } from 'react';
 import { Tabs } from '../UI/index.jsx';
 
-export function DiretorVisualView({ visuais, consistencia, rawOutput, onApprove, onRegenerate }) {
+export function DiretorVisualView({ visuais, consistencia, rawOutput, onApprove, onRegenerate, isPreview = false }) {
   const [activeTabs, setActiveTabs] = useState({});
   const hasParsed = visuais && visuais.length > 0;
 
@@ -273,7 +278,7 @@ export function DiretorVisualView({ visuais, consistencia, rawOutput, onApprove,
           <h2 className="agent-title">Diretor Visual</h2>
           <p className="agent-subtitle">Prompts de imagem por cena (Opção A + B)</p>
         </div>
-        <span className="agent-model-badge">gemini-1.5-flash</span>
+        <span className="agent-model-badge">{AGENT_STEPS[2].modelo.toUpperCase()}</span>
       </div>
 
       <Card>
@@ -324,14 +329,16 @@ export function DiretorVisualView({ visuais, consistencia, rawOutput, onApprove,
           <CopyBlock text={rawOutput || 'Sem dados'} />
         )}
 
-        <div className="agent-actions">
-          <Button variant="ghost" onClick={onRegenerate} icon="🔄">
-            Regenerar
-          </Button>
-          <Button variant="primary" onClick={onApprove} icon="✓">
-            Aprovar Visuais
-          </Button>
-        </div>
+        {!isPreview && (
+          <div className="agent-actions">
+            <Button variant="ghost" onClick={onRegenerate} icon="🔄">
+              Regenerar
+            </Button>
+            <Button variant="primary" onClick={onApprove} icon="✓">
+              Aprovar Visuais
+            </Button>
+          </div>
+        )}
       </Card>
     </div>
   );
@@ -341,7 +348,7 @@ export function DiretorVisualView({ visuais, consistencia, rawOutput, onApprove,
 // AGENTE 4 — DISTRIBUIDOR
 // ═══════════════════════════════════════════════════
 
-export function DistribuidorView({ distribuicao, rawOutput, onApprove, onRegenerate }) {
+export function DistribuidorView({ distribuicao, rawOutput, onApprove, onRegenerate, isPreview = false }) {
   const [activeTab, setActiveTab] = useState('tiktok');
   const hasParsed = distribuicao && (distribuicao.tiktok || distribuicao.instagram || distribuicao.youtube);
 
@@ -447,7 +454,7 @@ export function DistribuidorView({ distribuicao, rawOutput, onApprove, onRegener
           <h2 className="agent-title">Distribuidor</h2>
           <p className="agent-subtitle">Pacote de distribuição para todas as plataformas</p>
         </div>
-        <span className="agent-model-badge">gemini-1.5-flash</span>
+        <span className="agent-model-badge">{AGENT_STEPS[3].modelo.toUpperCase()}</span>
       </div>
 
       <Card>
@@ -468,14 +475,16 @@ export function DistribuidorView({ distribuicao, rawOutput, onApprove, onRegener
           <CopyBlock text={rawOutput || 'Sem dados'} />
         )}
 
-        <div className="agent-actions">
-          <Button variant="ghost" onClick={onRegenerate} icon="🔄">
-            Regenerar
-          </Button>
-          <Button variant="primary" onClick={onApprove} icon="✓">
-            Aprovar Distribuição
-          </Button>
-        </div>
+        {!isPreview && (
+          <div className="agent-actions">
+            <Button variant="ghost" onClick={onRegenerate} icon="🔄">
+              Regenerar
+            </Button>
+            <Button variant="primary" onClick={onApprove} icon="✓">
+              Aprovar Distribuição
+            </Button>
+          </div>
+        )}
       </Card>
     </div>
   );

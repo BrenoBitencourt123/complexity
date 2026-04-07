@@ -1,7 +1,7 @@
 import { AGENT_STEPS } from '../../utils/constants.js';
 import './PipelineTracker.css';
 
-export default function PipelineTracker({ currentStep, status }) {
+export default function PipelineTracker({ currentStep, status, previewStep, onStepClick }) {
   const getStepState = (index) => {
     if (status === 'package_ready') return 'completed';
     if (index < currentStep) return 'completed';
@@ -26,7 +26,12 @@ export default function PipelineTracker({ currentStep, status }) {
     <div className="pipeline-tracker">
       {AGENT_STEPS.map((step, index) => (
         <div key={step.id} style={{ display: 'flex', alignItems: 'center' }}>
-          <div className={`pipeline-step ${getStepState(index)}`}>
+          <div
+            className={`pipeline-step ${getStepState(index)}${previewStep === index ? ' previewing' : ''}`}
+            onClick={() => getStepState(index) === 'completed' && onStepClick?.(index)}
+            style={{ cursor: getStepState(index) === 'completed' ? 'pointer' : 'default' }}
+            title={getStepState(index) === 'completed' ? `Ver ${step.nome}` : undefined}
+          >
             <div className="pipeline-step-number">
               {getStepState(index) === 'completed' ? '✓' : step.emoji}
             </div>

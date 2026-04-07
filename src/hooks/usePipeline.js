@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════════════════
 
 import { useState, useCallback, useRef } from 'react';
-import { runAgent } from '../services/gemini.js';
+import { runAgent, resetSessionUsage } from '../services/gemini.js';
 import {
   promptEstrategista,
   promptRoteirista,
@@ -32,6 +32,7 @@ const INITIAL_STATE = {
     tema: '',
     objetivo: '',
     contextoExtra: '',
+    formato: '',
   },
 
   // Outputs brutos (texto completo)
@@ -54,22 +55,15 @@ const INITIAL_STATE = {
   },
 };
 
-export function usePipeline() {
+export function usePipeline({ onAgentComplete } = {}) {
   const [state, setState] = useState(INITIAL_STATE);
   const abortRef = useRef(false);
+  // Refs: sempre contêm o valor mais recente sem stale closure
+  const inputsRef = useRef(INITIAL_STATE.inputs);
+  const rawOutputsRef = useRef(INITIAL_STATE.rawOutputs);
 
   const updateState = useCallback((updates) => {
     setState(prev => ({ ...prev, ...updates }));
-  }, []);
-
-  // ─── Iniciar produção ───
-  const iniciarProducao = useCallback((tema, objetivo, contextoExtra) => {
-    setState({
-      ...INITIAL_STATE,
-      status: 'starting',
-      currentStep: -1,
-      inputs: { tema, objetivo, contextoExtra },
-    });
   }, []);
 
   // ─── Executar um agente ───
@@ -111,6 +105,11 @@ export function usePipeline() {
 
       const parsed = parseFn ? parseFn(resultado) : resultado;
 
+      // Atualiza ref de rawOutputs imediatamente para os próximos agentes lerem sem stale closure
+      rawOutputsRef.current = { ...rawOutputsRef.current, [outputKey]: resultado };
+
+      onAgentComplete?.();
+
       setState(prev => ({
         ...prev,
         status: `agent_${stepIndex + 1}_review`,
@@ -142,33 +141,104 @@ export function usePipeline() {
       weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
     });
 
+    // Lê da ref — sempre tem o valor mais recente, sem stale closure
+    const inputs = inputsRef.current;
+    const temaOriginal = inputs.tema;
+
     await executarAgente(
       'estrategista',
       promptEstrategista,
-      { ...state.inputs, dataAtual },
+      { ...inputs, dataAtual },
       'estrategia',
       0,
-      (text) => ({ estrategia: parseEstrategia(text) })
+      (text) => {
+        const parsed = parseEstrategia(text);
+        if (parsed && temaOriginal) parsed.tema = temaOriginal;
+        return { estrategia: parsed };
+      }
     );
-  }, [executarAgente, state.inputs]);
+  }, [executarAgente]);
 
-  // ─── Executar Agente 2: Roteirista ───
+  // ─── Executar Agente 2: Roteirista + Revisor (QA) ───
   const executarRoteirista = useCallback(async () => {
     const { parseCenas, parseTTS, parseMetaRoteiro } = await import('../services/parser.js');
+    const { promptRevisor } = await import('../services/prompts.js');
 
-    await executarAgente(
-      'roteirista',
-      promptRoteirista,
-      { estrategia: state.rawOutputs.estrategia },
-      'roteiro',
-      1,
-      (text) => ({
-        cenas: parseCenas(text),
-        tts: parseTTS(text),
-        metaRoteiro: parseMetaRoteiro(text),
-      })
-    );
-  }, [executarAgente, state.rawOutputs.estrategia]);
+    if (!rawOutputsRef.current.estrategia) {
+      updateState({ status: 'agent_2_review', isStreaming: false, error: 'Estratégia não disponível. Aprove o Agente 1 primeiro.' });
+      return;
+    }
+
+    abortRef.current = false;
+    updateState({
+      status: `agent_2_running`,
+      currentStep: 1,
+      isStreaming: true,
+      streamingText: '',
+      error: null,
+    });
+
+    try {
+      const { system, user } = promptRoteirista({ estrategia: rawOutputsRef.current.estrategia });
+
+      // Passo 1: Gera roteiro com stream
+      let roteiroInicial = await runAgent('roteirista', system, user, (chunk, fullText) => {
+        if (abortRef.current) return;
+        setState(prev => ({ ...prev, streamingText: fullText }));
+      });
+
+      if (abortRef.current) return;
+
+      // Passo 2: QA Checker (Invisível)
+      setState(prev => ({ ...prev, streamingText: roteiroInicial + '\n\n[🔄 Revisor QA: Auditando a aderência ao funil...]' }));
+
+      const qaPrompt = promptRevisor({ estrategia: rawOutputsRef.current.estrategia, roteiro: roteiroInicial });
+      const qaResultText = await runAgent('roteirista', qaPrompt.system, qaPrompt.user, null); // runs without stream to be fast
+      
+      let finalRoteiro = roteiroInicial;
+      try {
+        const qaJson = JSON.parse(qaResultText.replace(/```json/g, '').replace(/```/g, ''));
+        if (qaJson.status === 'reprovado_e_corrigido' && qaJson.roteiro_final) {
+          finalRoteiro = qaJson.roteiro_final;
+          console.log('[QA] Roteiro consertado automaticamente. Motivo: ', qaJson.motivo);
+        } else {
+          console.log('[QA] Roteiro aprovado de primeira! Motivo: ', qaJson.motivo);
+        }
+      } catch (err) {
+        console.error('[QA] Falha ao processar JSON da revisão', err);
+      }
+
+      if (abortRef.current) return;
+
+      const parsed = {
+        cenas: parseCenas(finalRoteiro),
+        tts: parseTTS(finalRoteiro),
+        metaRoteiro: parseMetaRoteiro(finalRoteiro),
+      };
+
+      setState(prev => ({
+        ...prev,
+        status: `agent_2_review`,
+        isStreaming: false,
+        streamingText: '',
+        rawOutputs: {
+          ...prev.rawOutputs,
+          roteiro: finalRoteiro,
+        },
+        parsedOutputs: {
+          ...prev.parsedOutputs,
+          ...parsed,
+        },
+      }));
+    } catch (error) {
+      if (abortRef.current) return;
+      updateState({
+        status: `agent_2_review`,
+        isStreaming: false,
+        error: error.message,
+      });
+    }
+  }, [updateState]);
 
   // ─── Executar Agente 3: Diretor Visual ───
   const executarDiretorVisual = useCallback(async () => {
@@ -178,8 +248,8 @@ export function usePipeline() {
       'diretor-visual',
       promptDiretorVisual,
       {
-        estrategia: state.rawOutputs.estrategia,
-        roteiro: state.rawOutputs.roteiro,
+        estrategia: rawOutputsRef.current.estrategia,
+        roteiro: rawOutputsRef.current.roteiro,
       },
       'visuais',
       2,
@@ -188,7 +258,7 @@ export function usePipeline() {
         consistencia: parseConsistencia(text),
       })
     );
-  }, [executarAgente, state.rawOutputs]);
+  }, [executarAgente]);
 
   // ─── Executar Agente 4: Distribuidor ───
   const executarDistribuidor = useCallback(async () => {
@@ -198,14 +268,14 @@ export function usePipeline() {
       'distribuidor',
       promptDistribuidor,
       {
-        estrategia: state.rawOutputs.estrategia,
-        roteiro: state.rawOutputs.roteiro,
+        estrategia: rawOutputsRef.current.estrategia,
+        roteiro: rawOutputsRef.current.roteiro,
       },
       'distribuicao',
       3,
       (text) => ({ distribuicao: parseDistribuicao(text) })
     );
-  }, [executarAgente, state.rawOutputs]);
+  }, [executarAgente]);
 
   // ─── Aprovar step e avançar ───
   const aprovarStep = useCallback((stepIndex) => {
@@ -239,25 +309,40 @@ export function usePipeline() {
     runners[stepIndex]();
   }, [executarEstrategista, executarRoteirista, executarDiretorVisual, executarDistribuidor]);
 
-  // ─── Cancelar ───
-  const cancelar = useCallback(() => {
-    abortRef.current = true;
-    setState(INITIAL_STATE);
-  }, []);
-
   // ─── Reset ───
   const reset = useCallback(() => {
     abortRef.current = true;
+    resetSessionUsage();
+    inputsRef.current = INITIAL_STATE.inputs;
+    rawOutputsRef.current = INITIAL_STATE.rawOutputs;
     setState(INITIAL_STATE);
   }, []);
 
+  // ─── Restaurar estado salvo (carrega produção do histórico sem chamar API) ───
+  const restaurar = useCallback((dados) => {
+    const inputs = dados.inputs || INITIAL_STATE.inputs;
+    const rawOutputs = dados.rawOutputs || INITIAL_STATE.rawOutputs;
+    inputsRef.current = inputs;
+    rawOutputsRef.current = rawOutputs;
+    setState({
+      ...INITIAL_STATE,
+      status: dados.pipelineStatus || 'package_ready',
+      currentStep: dados.currentStep ?? -1,
+      inputs,
+      rawOutputs,
+      parsedOutputs: dados.parsedOutputs || INITIAL_STATE.parsedOutputs,
+    });
+  }, []);
+
   // ─── Iniciar o pipeline (formulário → agente 1) ───
-  const iniciar = useCallback((tema, objetivo, contextoExtra) => {
+  const iniciar = useCallback((tema, objetivo, contextoExtra, formato) => {
+    const novoInputs = { tema, objetivo, contextoExtra, formato };
+    // Atualiza ref imediatamente — sem depender do ciclo de render do React
+    inputsRef.current = novoInputs;
     setState(prev => ({
       ...INITIAL_STATE,
-      inputs: { tema, objetivo, contextoExtra },
+      inputs: novoInputs,
     }));
-    // Pequeno delay para state atualizar
     setTimeout(() => {
       executarEstrategista();
     }, 100);
@@ -266,12 +351,10 @@ export function usePipeline() {
   return {
     ...state,
     iniciar,
-    iniciarProducao,
+    restaurar,
     executarEstrategista,
     aprovarStep,
     regenerarStep,
-    cancelar,
     reset,
-    updateState,
   };
 }

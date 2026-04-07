@@ -114,6 +114,22 @@
   background: linear-gradient(90deg, var(--success), var(--brand-primary));
 }
 
+/* Previewing (step clicked to review) */
+.pipeline-step.completed.previewing .pipeline-step-number {
+  background: var(--brand-primary);
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 12px var(--brand-glow);
+}
+
+.pipeline-step.completed.previewing .pipeline-step-name {
+  color: var(--brand-primary);
+}
+
+.pipeline-step.completed:hover .pipeline-step-number {
+  opacity: 0.8;
+  transform: scale(1.05);
+}
+
 /* Package Ready */
 .pipeline-step.package .pipeline-step-number {
   background: var(--brand-gradient);

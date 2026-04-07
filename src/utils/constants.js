@@ -102,15 +102,72 @@ export const ELEVENLABS_CONFIG = {
 
 export const ATLAS_BRAND = {
   nome: 'Atlas',
-  descricao: 'Plataforma de preparação para o ENEM com questões adaptativas, redação com feedback de IA e repetição espaçada.',
-  publico: 'Estudantes brasileiros entre 15 e 22 anos que vão fazer o ENEM',
+  tagline: 'Inteligência aplicada ao seu estudo',
+  descricao: 'Um hub unificado de estudos com IA focada no ENEM. Identifica pontos fracos e adapta o estudo do aluno.',
+  publico: 'Estudantes brasileiros entre 15 e 22 anos prestando o ENEM, que se sentem perdidos com métodos tradicionais e exaustos com videoaulas.',
+  modeloNegocio: 'Plano gratuito limitado + Plano PRO com acesso completo. Programa Fundadores com vagas limitadas a preço especial.',
   preco: 'R$49,90/mês',
-  diferenciais: [
-    'Questões adaptativas que identificam onde o aluno precisa melhorar',
-    'Feedback de IA na redação (instantâneo, detalhado)',
-    'Repetição espaçada para fixação real',
+  tom: 'Claro, acolhedor e objetivo. Tom de professor particular que entende a pressão do vestibular, mas vai direto ao ponto.',
+  funcionalidades: {
+    questoesAdaptativas: 'Banco de questões reais do ENEM com classificação por tema/subtópico. Identifica pontos fracos e prioriza o que revisar com mastery score.',
+    redacaoIA: 'Análise detalhada por competência de redação, sugestões de melhoria e versão nota 1000 baseada no raciocínio do aluno.',
+    flashcardsSRS: 'Gerados automaticamente a partir de questões erradas, adaptando intervalos ao ritmo do aluno (Repetição Espaçada).',
+    cronograma: 'Cronograma inteligente que distribui as áreas de estudo ao longo da semana.',
+    temaDiario: 'Tema de redação diário com texto motivador, perguntas norteadoras e guia de estrutura.',
+    pwa: 'PWA progressivo — funciona igual app de celular e computador.'
+  },
+  doresPublico: [
+    'Estudar por videoaulas e na hora das questões dar "branco" total',
+    'Demora de dias para ter uma redação corrigida no cursinho',
+    'Sensação de ter esquecido TUDO que estudou há um mês atrás',
+    'Sentimento de atraso e ansiedade com o cronograma'
   ],
-  tom: 'Direto, encorajador, sem enrolação. Fala como um professor jovem que já passou pelo ENEM.',
+  diferenciais: [
+    'Sistema que pensa por você: mapeia suas falhas automaticamente',
+    'Correção de redação instantânea e personalizada',
+    'Estudo ativo vs passivo (Adeus, playlist de videoaulas)'
+  ]
+};
+
+export const PILARES_CONTEUDO = [
+  {
+    nome: 'Dicas de Estudo (Crescimento)',
+    descricao: 'Hacks práticos, erros comuns desmascarados e dicas de produtividade. Alta probabilidade de salvar e compartilhar.',
+    angulo: 'Mostre um erro comum que 90% faz (ex: resumão colorido) e ensine a forma inteligente e científica de resolver.'
+  },
+  {
+    nome: 'Conteúdo de Matéria (Autoridade)',
+    descricao: 'Resolver um tópico difícil do ENEM de forma visual, rápida e com macetes.',
+    angulo: 'Substitua 50 min de aula chata por 40 segundos de "eureka". Foco na clareza.'
+  },
+  {
+    nome: 'Motivacional/Acolhimento (Retenção)',
+    descricao: 'Vídeos acolhedores e honestos sobre a pressão e saúde mental no vestibular.',
+    angulo: 'Tire um peso das costas do aluno. "Não, você não está atrasado. Faça isso".'
+  },
+  {
+    nome: 'Feature PRO (Conversão Direta)',
+    descricao: 'Mostrar a tela da plataforma resolvendo uma dor insuportável (ex: redação travada).',
+    angulo: 'Gere o sentimento de "eu preciso disso agora para economizar meu tempo". Termine com chamada para o Programa Fundadores.'
+  },
+  {
+    nome: 'Tendências ENEM (Urgência)',
+    descricao: 'Apostas de redação, prazos importantes do INEP, como lidar com a prova chegando.',
+    angulo: 'Use dados ou análises para criar um senso de preparação vital.'
+  }
+];
+
+export const FORMAT_CONFIG = {
+  Shorts:    { icon: '📱', label: 'Reels / TikTok / Shorts', color: 'var(--brand-primary)' },
+  Carrossel: { icon: '🖼️', label: 'Post Carrossel',          color: '#8b5cf6' },
+  Stories:   { icon: '⭕', label: 'Stories',                  color: '#f59e0b' },
+};
+
+export const OBJETIVO_CONFIG = {
+  crescimento: { emoji: '📈', label: 'Crescimento', color: '#3b82f6' },
+  conversao:   { emoji: '💰', label: 'Conversão',   color: '#22c55e' },
+  retencao:    { emoji: '🔄', label: 'Retenção',    color: '#8b5cf6' },
+  awareness:   { emoji: '👁️', label: 'Awareness',   color: '#f59e0b' },
 };
 
 export const STATUS_PRODUCAO = {
@@ -120,8 +177,8 @@ export const STATUS_PRODUCAO = {
 };
 
 export const AGENT_STEPS = [
-  { id: 'estrategista', nome: 'Estrategista', emoji: '🎯', numero: 1, modelo: 'gemini-1.5-pro' },
-  { id: 'roteirista', nome: 'Roteirista', emoji: '✍️', numero: 2, modelo: 'gemini-1.5-pro' },
-  { id: 'diretor-visual', nome: 'Diretor Visual', emoji: '🎨', numero: 3, modelo: 'gemini-1.5-flash' },
-  { id: 'distribuidor', nome: 'Distribuidor', emoji: '📡', numero: 4, modelo: 'gemini-1.5-flash' },
+  { id: 'estrategista', nome: 'Estrategista', emoji: '🎯', numero: 1, modelo: 'gemini-2.5-flash' },
+  { id: 'roteirista', nome: 'Roteirista', emoji: '✍️', numero: 2, modelo: 'gemini-2.5-flash' },
+  { id: 'diretor-visual', nome: 'Diretor Visual', emoji: '🎨', numero: 3, modelo: 'gemini-2.5-flash' },
+  { id: 'distribuidor', nome: 'Distribuidor', emoji: '📡', numero: 4, modelo: 'gemini-2.5-flash' },
 ];

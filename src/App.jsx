@@ -1,7 +1,6 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import Sidebar from './components/Layout/Sidebar.jsx';
 import PipelineTracker from './components/Pipeline/PipelineTracker.jsx';
-import StartForm from './components/Agents/StartForm.jsx';
 import {
   AgentLoading,
   AgentError,
@@ -11,28 +10,79 @@ import {
   DistribuidorView,
 } from './components/Agents/AgentViews.jsx';
 import PacoteFinal from './components/Production/PacoteFinal.jsx';
-import { Card, Button, Modal } from './components/UI/index.jsx';
+import { Card, Button } from './components/UI/index.jsx';
 import { usePipeline } from './hooks/usePipeline.js';
 import { useHistory } from './hooks/useHistory.js';
 import { useSettings } from './hooks/useSettings.js';
-import { initGemini, testConnection } from './services/gemini.js';
+import { useContentSchedule } from './hooks/useContentSchedule.js';
+import { initGemini, testConnection, getSessionUsage } from './services/gemini.js';
+import DataIntelPanel from './components/Intelligence/DataIntelPanel.jsx';
+import { AGENT_STEPS } from './utils/constants.js';
+import DailyDashboard from './components/Dashboard/DailyDashboard.jsx';
+import WeeklyCalendar from './components/Dashboard/WeeklyCalendar.jsx';
 import './App.css';
 
 export default function App() {
   const [currentView, setCurrentView] = useState('production');
   const [testingApi, setTestingApi] = useState(false);
   const [apiTestResult, setApiTestResult] = useState(null);
+  const [sessionUsage, setSessionUsage] = useState({ promptTokens: 0, outputTokens: 0, calls: 0, estimatedCostBRL: 0 });
+  const [previewStep, setPreviewStep] = useState(null);
 
-  const pipeline = usePipeline();
+  // Ref para rastrear o ID da produção em andamento sem causar re-renders
+  const currentProductionIdRef = useRef(null);
+
+  const pipeline = usePipeline({
+    onAgentComplete: () => setSessionUsage(getSessionUsage()),
+  });
   const history = useHistory();
   const { settings, setApiKey, hasApiKey } = useSettings();
+  const schedule = useContentSchedule();
 
   // ─── Start production ───
-  const handleStart = useCallback((tema, objetivo, contextoExtra) => {
-    history.criarProducao(tema, objetivo);
-    pipeline.iniciar(tema, objetivo, contextoExtra);
+  const handleStart = useCallback((tema, objetivo, contextoExtra, formato) => {
+    const producao = history.criarProducao(tema, objetivo, formato);
+    currentProductionIdRef.current = producao.id;
+    pipeline.iniciar(tema, objetivo, contextoExtra, formato);
     setCurrentView('production');
   }, [history, pipeline]);
+
+  // ─── Fecha preview quando o pipeline avança para nova etapa ───
+  useEffect(() => {
+    setPreviewStep(null);
+  }, [pipeline.status]);
+
+  // ─── Salva estado no Supabase ao completar cada agente ───
+  useEffect(() => {
+    const estadosDeSave = ['agent_1_review', 'agent_2_review', 'agent_3_review', 'package_ready'];
+    if (!currentProductionIdRef.current) return;
+    if (!estadosDeSave.includes(pipeline.status)) return;
+
+    history.atualizarProducao(currentProductionIdRef.current, {
+      status: pipeline.status === 'package_ready' ? 'aprovado' : 'rascunho',
+      dados: {
+        pipelineStatus: pipeline.status,
+        currentStep: pipeline.currentStep,
+        inputs: pipeline.inputs,
+        rawOutputs: pipeline.rawOutputs,
+        parsedOutputs: pipeline.parsedOutputs,
+      },
+    });
+  }, [pipeline.status]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ─── Carregar produção salva do histórico ───
+  const handleSelectProduction = useCallback((id) => {
+    const producao = history.getProducao(id);
+    if (!producao?.dados?.pipelineStatus) return;
+    currentProductionIdRef.current = id;
+    pipeline.restaurar(producao.dados);
+    setCurrentView('production');
+  }, [history, pipeline]);
+
+  // ─── Produzir a partir de uma tarefa do schedule ───
+  const handleProduzirTask = useCallback((task) => {
+    handleStart(task.tema, task.objetivo, task.contextoExtra || '', task.formato);
+  }, [handleStart]);
 
   // ─── Approve & advance ───
   const handleApproveStep = useCallback((stepIndex) => {
@@ -47,6 +97,7 @@ export default function App() {
   // ─── Reset ───
   const handleReset = useCallback(() => {
     pipeline.reset();
+    setSessionUsage({ promptTokens: 0, outputTokens: 0, calls: 0, estimatedCostBRL: 0 });
     setCurrentView('production');
   }, [pipeline]);
 
@@ -70,14 +121,97 @@ export default function App() {
     if (currentView === 'settings') {
       return renderSettings();
     }
+    if (currentView === 'intel') {
+      return <DataIntelPanel onBack={() => setCurrentView('production')} />;
+    }
+
+    if (currentView === 'calendar') {
+      return (
+        <WeeklyCalendar
+          schedule={schedule}
+          onSelectDay={(date) => {
+            schedule.setSelectedDate(date);
+            setCurrentView('production');
+          }}
+        />
+      );
+    }
 
     const { status, currentStep, error, isStreaming, streamingText, parsedOutputs, rawOutputs } = pipeline;
 
-    // Idle → show start form
+    // Preview de step anterior
+    if (previewStep !== null) {
+      const previewViews = [
+        <EstrategistaView
+          key="preview-0"
+          data={parsedOutputs.estrategia}
+          rawOutput={rawOutputs.estrategia}
+          isPreview
+        />,
+        <RoteiristaView
+          key="preview-1"
+          cenas={parsedOutputs.cenas}
+          tts={parsedOutputs.tts}
+          metaRoteiro={parsedOutputs.metaRoteiro}
+          rawOutput={rawOutputs.roteiro}
+          isPreview
+        />,
+        <DiretorVisualView
+          key="preview-2"
+          visuais={parsedOutputs.visuais}
+          consistencia={parsedOutputs.consistencia}
+          rawOutput={rawOutputs.visuais}
+          isPreview
+        />,
+        <DistribuidorView
+          key="preview-3"
+          distribuicao={parsedOutputs.distribuicao}
+          rawOutput={rawOutputs.distribuicao}
+          isPreview
+        />,
+      ];
+      return (
+        <div>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 'var(--space-3)',
+            padding: 'var(--space-3) var(--space-4)',
+            background: 'rgba(59,130,246,0.08)',
+            border: '1px solid rgba(59,130,246,0.2)',
+            borderRadius: 'var(--radius-md)',
+            marginBottom: 'var(--space-4)',
+          }}>
+            <span style={{ fontSize: 'var(--text-sm)', color: 'var(--brand-primary)' }}>
+              👁 Visualizando etapa anterior
+            </span>
+            <button
+              onClick={() => setPreviewStep(null)}
+              style={{
+                marginLeft: 'auto',
+                fontSize: 'var(--text-sm)',
+                color: 'var(--text-secondary)',
+                background: 'none',
+                border: '1px solid var(--surface-border)',
+                borderRadius: 'var(--radius-sm)',
+                padding: '4px 12px',
+                cursor: 'pointer',
+              }}
+            >
+              ← Voltar ao atual
+            </button>
+          </div>
+          {previewViews[previewStep]}
+        </div>
+      );
+    }
+
+    // Idle → Daily Dashboard
     if (status === 'idle') {
       return (
-        <StartForm
-          onStart={handleStart}
+        <DailyDashboard
+          schedule={schedule}
+          onProduzir={handleProduzirTask}
           hasApiKey={hasApiKey}
           onOpenSettings={() => setCurrentView('settings')}
         />
@@ -168,8 +302,9 @@ export default function App() {
     }
 
     return (
-      <StartForm
-        onStart={handleStart}
+      <DailyDashboard
+        schedule={schedule}
+        onProduzir={handleProduzirTask}
         hasApiKey={hasApiKey}
         onOpenSettings={() => setCurrentView('settings')}
       />
@@ -236,20 +371,15 @@ export default function App() {
           🤖 Modelos por Agente
         </h3>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
-          {[
-            { name: 'Estrategista', model: 'gemini-1.5-pro', emoji: '🎯' },
-            { name: 'Roteirista', model: 'gemini-1.5-pro', emoji: '✍️' },
-            { name: 'Diretor Visual', model: 'gemini-1.5-flash', emoji: '🎨' },
-            { name: 'Distribuidor', model: 'gemini-1.5-flash', emoji: '📡' },
-          ].map((a) => (
-            <div key={a.name} style={{
+          {AGENT_STEPS.map((a) => (
+            <div key={a.id} style={{
               padding: 'var(--space-3)',
               background: 'var(--bg-primary)',
               borderRadius: 'var(--radius-md)',
               border: '1px solid var(--surface-border)',
             }}>
               <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600 }}>
-                {a.emoji} {a.name}
+                {a.emoji} {a.nome}
               </div>
               <div style={{
                 fontSize: '10px',
@@ -258,7 +388,7 @@ export default function App() {
                 letterSpacing: '0.05em',
                 marginTop: 2,
               }}>
-                {a.model}
+                {a.modelo}
               </div>
             </div>
           ))}
@@ -284,9 +414,19 @@ export default function App() {
       {/* Sidebar */}
       <Sidebar
         producoes={history.producoes}
-        onNewProduction={handleReset}
-        onSelectProduction={() => {}}
+        onNewProduction={() => {
+          if (pipeline.status !== 'idle' && pipeline.status !== 'package_ready') {
+            setCurrentView('production');
+          } else {
+            handleReset();
+          }
+        }}
+        onSelectProduction={handleSelectProduction}
         onOpenSettings={() => setCurrentView('settings')}
+        onOpenIntel={() => setCurrentView('intel')}
+        onOpenCalendar={() => setCurrentView('calendar')}
+        weekProgress={schedule.getWeekProgress()}
+        sessionUsage={sessionUsage}
         currentView={currentView}
       />
 
@@ -297,6 +437,8 @@ export default function App() {
           <PipelineTracker
             currentStep={pipeline.currentStep}
             status={pipeline.status}
+            previewStep={previewStep}
+            onStepClick={(step) => setPreviewStep(previewStep === step ? null : step)}
           />
         )}
 
