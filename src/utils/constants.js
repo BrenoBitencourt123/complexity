@@ -6,27 +6,19 @@
 export const ESTILOS_VISUAIS = {
   SKETCH: {
     nome: 'Sketch',
-    descricao: 'Traço azul sobre fundo branco — estilo caderno/esboço',
+    descricao: 'Esboço educacional clean — papel bege, cinza + azul como destaque',
     emoji: '✏️',
-    cor: '#3b82f6',
+    cor: '#4A90E2',
     usoIdeal: 'Conteúdo explicativo, matemático, científico, diagramas',
-    blocoMestre: `ESTILO MESTRE (aplique em todos os elementos): Ilustração de traço azul sobre papel branco,
-estilo caderno de anotações de um estudante inteligente. Linhas orgânicas feitas à mão com
-caneta esferográfica azul escuro. Técnica: esboço rápido e expressivo, com variações de
-espessura nas linhas — mais grossas nos contornos principais, mais finas nos detalhes internos.
-O acabamento não é polido; é vivo, humano e impreciso de forma intencional. Elementos podem
-ter hachuras leves para sombreamento, nunca preenchimento sólido. Feel: caderno de um aluno
-aplicado, diagrama didático feito na hora, anotação de aula com energia.
-NUNCA use cor além de tons de azul e cinza claro. NUNCA use renderização 3D, gradientes
-ou estilo de animação limpo.`,
-    blocoMestreSimplificado: `Ilustração de traço azul sobre papel branco, estilo caderno de estudante. 
-Linhas feitas à mão com caneta azul escuro, esboço rápido e expressivo. 
-Variações de espessura — grossas nos contornos, finas nos detalhes. 
-Acabamento vivo e humano, não polido. Hachuras leves para sombra, sem preenchimento sólido.
-Apenas tons de azul e cinza claro. Sem 3D, gradientes ou animação limpa.`,
+    blocoMestre: `ESTILO MESTRE (aplique em todos os elementos): Ilustração desenhada à mão, estilo esboço educacional clean, papel bege/creme suave (#F5F0E8). Paleta: tons de cinza (#444444 traços) com APENAS azul (#4A90E2) como cor de destaque — use o azul somente para o elemento mais importante da cena. Técnica: hachura leve a lápis, linhas limpas, aspecto de material didático profissional. Feel: startup de educação, clean, moderno e confiável. NUNCA use cores fora desta paleta.`,
+    blocoMestreSimplificado: `Ilustração desenhada à mão sobre papel bege/creme (#F5F0E8).
+Traços em cinza (#444444) com azul (#4A90E2) apenas no elemento mais importante.
+Hachura leve a lápis, linhas limpas, aspecto de material didático.
+Clean, moderno e confiável. NUNCA use cores fora desta paleta.`,
     promptNegativo: `photorealistic, photograph, 3D render, smooth shading, colorful, painted, digital art,
 gradient, flat design, vector, clip art, cartoon, anime, watercolor, oil painting,
-blurry, low quality, text overlay, watermark, logo`,
+blurry, low quality, text overlay, watermark, logo, colored background, white background,
+vibrant colors, saturated colors, multiple colors`,
   },
 
   PINTURA: {
@@ -35,22 +27,15 @@ blurry, low quality, text overlay, watermark, logo`,
     emoji: '🎨',
     cor: '#8b5cf6',
     usoIdeal: 'Conteúdo emocional, motivacional, histórico, literário',
-    blocoMestre: `ESTILO MESTRE (aplique em todos os elementos): Pintura digital texturizada, estilo arte
-conceitual de mesa digitalizadora. Visíveis pinceladas de tinta digital e texturas de
-superfície rugosa. Técnica: sobreposição de camadas de cores e pinceladas expressivas,
-não polidas. O acabamento não é liso — é texturizado e tátil, como se houvesse tinta
-física na tela. Paleta rica e saturada, com contraste entre luz e sombra pronunciado.
-Feel: arte conceitual imersiva, artesanal, com peso visual e profundidade.
-NUNCA use renderização 3D lisa, estilo de animação limpo ou flat design sem textura.`,
-    blocoMestreSimplificado: `Pintura digital texturizada, estilo arte conceitual. 
-Pinceladas visíveis de tinta digital e superfície rugosa. 
-Sobreposição de camadas de cores expressivas, não polidas. 
-Texturizado e tátil, como tinta física na tela. 
-Paleta rica e saturada, contraste luz/sombra pronunciado.
-Sem 3D lisa, animação limpa ou flat design sem textura.`,
+    blocoMestre: `ESTILO MESTRE (aplique em todos os elementos): Pintura digital expressiva e COLORIDA, estilo arte conceitual de mesa digitalizadora. Paleta OBRIGATORIAMENTE rica e saturada — use laranja vibrante (#F97316), azul royal (#3B82F6), roxo (#8B5CF6) e amarelo quente (#FBBF24) como cores dominantes. Fundo com gradiente de cor quente ou fria intensa, nunca cinza ou neutro. Pinceladas visíveis e textura de tinta digital em todas as superfícies. Técnica: sobreposição de camadas de cores expressivas, contrastes fortes entre luz (tons claros saturados) e sombra (tons escuros coloridos, não pretos). O acabamento é texturizado e tátil. Feel: arte conceitual imersiva, vibrante, com energia visual alta. NUNCA use paleta monocromática, tons de cinza como cor principal ou cenas sem cor saturada.`,
+    blocoMestreSimplificado: `Pintura digital expressiva, cores VIBRANTES e saturadas obrigatórias.
+Paleta: laranja (#F97316), azul royal (#3B82F6), roxo (#8B5CF6), amarelo (#FBBF24).
+Fundo com gradiente de cor intensa — nunca cinza ou neutro.
+Pinceladas visíveis, textura de tinta digital, contraste forte luz/sombra colorida.
+Feel: arte conceitual imersiva e energética. NUNCA paleta monocromática ou cinza dominante.`,
     promptNegativo: `photorealistic, photograph, 3D render, smooth CGI, flat design, vector art, line art,
 sketch, pencil drawing, anime, cartoon, blurry, low quality, text overlay, watermark,
-logo, clipart, stock photo`,
+logo, clipart, stock photo, monochromatic, grayscale, desaturated, muted colors, gray background`,
   },
 };
 

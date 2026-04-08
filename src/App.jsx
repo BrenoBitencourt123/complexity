@@ -250,6 +250,7 @@ export default function App() {
             rawOutput={rawOutputs.estrategia}
             onApprove={() => handleApproveStep(0)}
             onRegenerate={() => handleRegenerateStep(0)}
+            onChangeEstilo={pipeline.setEstiloVisual}
           />
         </div>
       );

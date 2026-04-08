@@ -4,15 +4,22 @@ import { diasAteEnem } from '../../utils/enem.js';
 import { Card } from '../UI/index.jsx';
 import './StartForm.css';
 
+const ESTILOS_OPCOES = [
+  { value: 'AUTO', label: 'Auto', emoji: '🤖', desc: 'IA decide' },
+  { value: 'SKETCH', label: 'Sketch', emoji: '✏️', desc: 'Esboço educacional' },
+  { value: 'PINTURA', label: 'Pintura', emoji: '🎨', desc: 'Arte conceitual' },
+];
+
 export default function StartForm({ onStart, hasApiKey, onOpenSettings }) {
   const [tema, setTema] = useState('');
   const [objetivo, setObjetivo] = useState('');
   const [contextoExtra, setContextoExtra] = useState('');
+  const [estiloForcado, setEstiloForcado] = useState('AUTO');
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!tema.trim()) return;
-    onStart(tema.trim(), objetivo, contextoExtra.trim(), 'Shorts');
+    onStart(tema.trim(), objetivo, contextoExtra.trim(), 'Shorts', estiloForcado);
   };
 
   const dias = diasAteEnem();
@@ -57,6 +64,23 @@ export default function StartForm({ onStart, hasApiKey, onOpenSettings }) {
                     <span className="objective-option-emoji">{obj.emoji}</span>
                     <span className="objective-option-label">{obj.label}</span>
                     <span className="objective-option-desc">{obj.desc}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">🖼️ Estilo visual</label>
+              <div className="start-form-estilos">
+                {ESTILOS_OPCOES.map((est) => (
+                  <div
+                    key={est.value}
+                    className={`estilo-option ${estiloForcado === est.value ? 'selected' : ''}`}
+                    onClick={() => setEstiloForcado(est.value)}
+                  >
+                    <span className="estilo-option-emoji">{est.emoji}</span>
+                    <span className="estilo-option-label">{est.label}</span>
+                    <span className="estilo-option-desc">{est.desc}</span>
                   </div>
                 ))}
               </div>

@@ -10,6 +10,7 @@ import {
   promptDiretorVisual,
   promptDistribuidor,
 } from '../services/prompts.js';
+import { getContextoParaCMO, addTemaCoberto } from '../services/narrativeMemory.js';
 
 /**
  * Estados do pipeline:
@@ -61,6 +62,7 @@ export function usePipeline({ onAgentComplete } = {}) {
   // Refs: sempre contêm o valor mais recente sem stale closure
   const inputsRef = useRef(INITIAL_STATE.inputs);
   const rawOutputsRef = useRef(INITIAL_STATE.rawOutputs);
+  const estiloForcadoRef = useRef('AUTO');
 
   const updateState = useCallback((updates) => {
     setState(prev => ({ ...prev, ...updates }));
@@ -145,18 +147,34 @@ export function usePipeline({ onAgentComplete } = {}) {
     const inputs = inputsRef.current;
     const temaOriginal = inputs.tema;
 
+    const narrativaContexto = await getContextoParaCMO().catch(() => '');
+
     await executarAgente(
       'estrategista',
       promptEstrategista,
-      { ...inputs, dataAtual },
+      { ...inputs, dataAtual, narrativaContexto },
       'estrategia',
       0,
       (text) => {
         const parsed = parseEstrategia(text);
         if (parsed && temaOriginal) parsed.tema = temaOriginal;
+        // Override do estilo se o usuário forçou manualmente
+        const forcado = estiloForcadoRef.current;
+        if (forcado && forcado !== 'AUTO' && parsed) {
+          parsed.estilo_visual = forcado;
+        }
         return { estrategia: parsed };
       }
     );
+
+    // Patch no raw YAML para que o Diretor Visual também receba o estilo forçado
+    const forcado = estiloForcadoRef.current;
+    if (forcado && forcado !== 'AUTO' && rawOutputsRef.current.estrategia) {
+      rawOutputsRef.current.estrategia = rawOutputsRef.current.estrategia.replace(
+        /estilo_visual:\s*"?[^\n"]+/i,
+        `estilo_visual: "${forcado}"`
+      );
+    }
   }, [executarAgente]);
 
   // ─── Executar Agente 2: Roteirista + Revisor (QA) ───
@@ -292,6 +310,14 @@ export function usePipeline({ onAgentComplete } = {}) {
     if (nextStep < 4) {
       runners[nextStep]();
     } else {
+      // Registra tema na memória narrativa em background
+      const inputs = inputsRef.current;
+      addTemaCoberto(
+        inputs.tema,
+        inputs.formato || 'Shorts',
+        new Date().toISOString().slice(0, 10)
+      ).catch(() => {});
+
       updateState({
         status: 'package_ready',
         currentStep: 4,
@@ -337,10 +363,11 @@ export function usePipeline({ onAgentComplete } = {}) {
   }, []);
 
   // ─── Iniciar o pipeline (formulário → agente 1) ───
-  const iniciar = useCallback((tema, objetivo, contextoExtra, formato) => {
+  const iniciar = useCallback((tema, objetivo, contextoExtra, formato, estiloForcado = 'AUTO') => {
     const novoInputs = { tema, objetivo, contextoExtra, formato };
     // Atualiza ref imediatamente — sem depender do ciclo de render do React
     inputsRef.current = novoInputs;
+    estiloForcadoRef.current = estiloForcado;
     setState(prev => ({
       ...INITIAL_STATE,
       inputs: novoInputs,
@@ -350,6 +377,25 @@ export function usePipeline({ onAgentComplete } = {}) {
     }, 100);
   }, [executarEstrategista]);
 
+  // ─── Troca estilo visual após revisão do Agente 1 ───
+  const setEstiloVisual = useCallback((estilo) => {
+    setState(prev => ({
+      ...prev,
+      parsedOutputs: {
+        ...prev.parsedOutputs,
+        estrategia: prev.parsedOutputs.estrategia
+          ? { ...prev.parsedOutputs.estrategia, estilo_visual: estilo }
+          : prev.parsedOutputs.estrategia,
+      },
+    }));
+    if (rawOutputsRef.current.estrategia) {
+      rawOutputsRef.current.estrategia = rawOutputsRef.current.estrategia.replace(
+        /estilo_visual:\s*"?[^\n"]+/i,
+        `estilo_visual: "${estilo}"`
+      );
+    }
+  }, []);
+
   return {
     ...state,
     iniciar,
@@ -358,5 +404,6 @@ export function usePipeline({ onAgentComplete } = {}) {
     aprovarStep,
     regenerarStep,
     reset,
+    setEstiloVisual,
   };
 }

@@ -19,7 +19,7 @@ function parseEstYaml(estrategia) {
 
 // ─── AGENTE 1: ESTRATEGISTA ───
 
-export function promptEstrategista({ tema, objetivo, contextoExtra, formato, dataAtual }) {
+export function promptEstrategista({ tema, objetivo, contextoExtra, formato, dataAtual, narrativaContexto }) {
   const isVideo = !formato || formato.toLowerCase().includes('shorts') || formato.toLowerCase().includes('reels');
   const isCarrossel = formato && formato.toLowerCase().includes('carrossel');
   const isStories = formato && formato.toLowerCase().includes('stories');
@@ -61,7 +61,7 @@ ESTRATEGIA:
   hook_sugerido: "[frase de hook ou título matador]"
   cta_sugerido: "[call to action específico]"`,
 
-    user: `INICIAR ANÁLISE ESTRATÉGICA
+    user: `${narrativaContexto ? `CONTEXTO NARRATIVO DO MOMENTO\n${narrativaContexto}\n\n---\n\n` : ''}INICIAR ANÁLISE ESTRATÉGICA
 
 TEMA OBRIGATÓRIO (NÃO ALTERE): ${tema}
 ⚠️ O tema acima é lei. Escolha o ângulo e o hook, mas o assunto central deve ser exatamente este. Proibido renomear, generalizar ou substituir.

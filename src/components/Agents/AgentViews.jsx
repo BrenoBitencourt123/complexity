@@ -46,7 +46,7 @@ export function AgentError({ error, onRetry }) {
 // ═══════════════════════════════════════════════════
 // AGENTE 1 — ESTRATEGISTA
 // ═══════════════════════════════════════════════════
-export function EstrategistaView({ data, rawOutput, onApprove, onRegenerate, isPreview = false }) {
+export function EstrategistaView({ data, rawOutput, onApprove, onRegenerate, onChangeEstilo, isPreview = false }) {
   if (!data && !rawOutput) return null;
 
   const estrategia = data || {};
@@ -93,10 +93,18 @@ export function EstrategistaView({ data, rawOutput, onApprove, onRegenerate, isP
 
               <div className="estrategia-field">
                 <div className="estrategia-field-label">Estilo Visual</div>
-                <div className="estrategia-field-value">
-                  <Badge color={estrategia.estilo_visual === 'SKETCH' ? 'blue' : 'purple'}>
-                    {estrategia.estilo_visual === 'SKETCH' ? '✏️ Sketch' : '🎨 Pintura'}
-                  </Badge>
+                <div className="estrategia-field-value estilo-toggle">
+                  {['SKETCH', 'PINTURA'].map(estilo => (
+                    <button
+                      key={estilo}
+                      className={`estilo-toggle-btn ${estrategia.estilo_visual === estilo ? 'active' : ''}`}
+                      onClick={() => !isPreview && onChangeEstilo?.(estilo)}
+                      disabled={isPreview || !onChangeEstilo}
+                      title={isPreview ? '' : `Mudar para ${estilo}`}
+                    >
+                      {estilo === 'SKETCH' ? '✏️ Sketch' : '🎨 Pintura'}
+                    </button>
+                  ))}
                 </div>
               </div>
 

@@ -33,6 +33,7 @@ export default function DailyDashboard({
     weekPlan,
     taskStatuses,
     isGenerating,
+    isLoadingFromDB,
     selectedDate,
     generatePlan,
     regeneratePlan,
@@ -46,12 +47,12 @@ export default function DailyDashboard({
   const tasks = getTasksForDate(selectedDate);
   const { done, total } = getDayProgress(selectedDate);
 
-  // Gera plano automaticamente na primeira vez (via useEffect, nunca durante render)
+  // Gera plano automaticamente APENAS se não há dados no Supabase (aguarda load terminar)
   useEffect(() => {
-    if (!weekPlan && !isGenerating && hasApiKey) {
+    if (!isLoadingFromDB && !weekPlan && !isGenerating && hasApiKey) {
       generatePlan();
     }
-  }, [weekPlan, isGenerating, hasApiKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isLoadingFromDB, weekPlan, isGenerating, hasApiKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Ordena por horário
   const sortedTasks = [...tasks].sort((a, b) =>

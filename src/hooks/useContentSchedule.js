@@ -30,6 +30,7 @@ export function useContentSchedule() {
   const [weekPlan, setWeekPlan] = useState(null);
   const [taskStatuses, setTaskStatuses] = useState({});
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isLoadingFromDB, setIsLoadingFromDB] = useState(true);
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().slice(0, 10)
   );
@@ -37,6 +38,7 @@ export function useContentSchedule() {
   // ─── Carrega plano do Supabase no mount ───
   useEffect(() => {
     async function load() {
+      setIsLoadingFromDB(true);
       const { data, error } = await supabase
         .from('content_plans')
         .select('*')
@@ -45,12 +47,11 @@ export function useContentSchedule() {
 
       if (error) {
         console.error('Erro ao carregar plano semanal:', error);
-        return;
-      }
-      if (data) {
+      } else if (data) {
         setWeekPlan(data.plan_data);
         setTaskStatuses(data.task_statuses || {});
       }
+      setIsLoadingFromDB(false);
     }
     load();
   }, [currentWeekKey]);
@@ -132,6 +133,7 @@ export function useContentSchedule() {
     weekPlan,
     taskStatuses,
     isGenerating,
+    isLoadingFromDB,
     selectedDate,
     setSelectedDate,
     generatePlan,

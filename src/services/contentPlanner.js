@@ -2,6 +2,7 @@ import { getGenAI } from './gemini.js';
 import { diasAteEnem, textoEnem } from '../utils/enem.js';
 import { ATLAS_BRAND, PILARES_CONTEUDO } from '../utils/constants.js';
 import { getCurrentIntel } from './dataAnalyst.js';
+import { getContextoParaCMO } from './narrativeMemory.js';
 
 const WEEK_DAYS = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
 
@@ -33,7 +34,10 @@ export async function generateWeeklyPlan() {
   const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
   const weekDates = getWeekDates();
-  const intel = await getCurrentIntel();
+  const [intel, memoriaCtx] = await Promise.all([
+    getCurrentIntel(),
+    getContextoParaCMO().catch(() => ''),
+  ]);
 
   const intelBlock = intel
     ? `INTELIGÊNCIA DE PERFORMANCE (USE OBRIGATORIAMENTE):
@@ -43,7 +47,7 @@ export async function generateWeeklyPlan() {
 - Recomendação do Cientista: ${intel.recomedacao_cmo || '—'}`
     : `FASE DA MARCA: Lançamento do zero. Prioridade máxima: crescimento orgânico e geração de confiança.`;
 
-  const systemPrompt = `Você é o CMO ESTRATÉGICO SÊNIOR da Atlas Agency.
+  const systemPrompt = `${memoriaCtx ? memoriaCtx + '\n\n---\n\n' : ''}Você é o CMO ESTRATÉGICO SÊNIOR da Atlas Agency.
 Sua missão é montar o PLANO DE CONTEÚDO COMPLETO dos próximos 7 dias para a marca Atlas.
 
 MARCA:
@@ -68,7 +72,11 @@ PRINCÍPIOS INVIOLÁVEIS DO CMO:
 5. HORÁRIOS BRASILEIROS: Picos reais — 7h-9h (manhã de estudante), 12h-14h (almoço), 19h-22h (noite de semana).
 6. NARRATIVA SEMANAL: Os posts da semana devem contar uma história coesa, não serem aleatórios.
 7. FIM DE SEMANA LEVE: Sábado máx. 2 posts, Domingo máx. 1 (estudante descansa).
-8. NÃO REPITA: Evite o mesmo formato em dias consecutivos. Varie temas entre os pilares.
+8. NÃO REPITA: Evite o mesmo formato em dias consecutivos. Varie temas entre os pilares.${memoriaCtx ? `
+9. MEMÓRIA: NUNCA repita os temas proibidos listados na memória acima.
+10. ARCOS: Se há arcos_ativos na memória, dê continuidade ao próximo passo descrito.
+11. FASE: Calibre o mix conforme a fase_audiencia (awareness = mais crescimento, conversao = mais CTAs diretos).
+12. GANCHOS: Use os ganchos_aprovados como referência de estilo e energia.` : ''}
 
 FORMATOS PERMITIDOS: "Shorts", "Carrossel", "Stories"
 OBJETIVOS PERMITIDOS: "crescimento", "conversao", "retencao", "awareness"
