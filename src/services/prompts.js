@@ -289,7 +289,7 @@ Estilo: [conforme estilo mestre]
 FUNDO:
 [descrição do fundo conforme estilo]
 
-PROPORÇÃO: 9:16 vertical (1080x1920px)
+PROPORÇÃO: ${formato.includes('carrossel') ? '1:1 quadrado (1080x1080px) ou 4:5 (1080x1350px)' : '9:16 vertical (1080x1920px)'}
 
 PROMPT_NEGATIVO:
 [prompt negativo fixo + elementos específicos desta cena]
@@ -310,7 +310,7 @@ COMPOSIÇÃO: [em português]
 TEXTO NA IMAGEM: [mesmo]
 FUNDO: [mesmo]
 REFERÊNCIA DE MOOD: [clima/atmosfera desejada]
-PROPORÇÃO: 9:16
+PROPORÇÃO: ${formato.includes('carrossel') ? '1:1 ou 4:5' : '9:16'}
 EVITAR: [lista em português]
 
 ---

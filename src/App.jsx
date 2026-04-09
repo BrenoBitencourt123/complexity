@@ -137,6 +137,7 @@ export default function App() {
     }
 
     const { status, currentStep, error, isStreaming, streamingText, parsedOutputs, rawOutputs } = pipeline;
+    const formatoProd = parsedOutputs.estrategia?.formato_imposto || 'Shorts';
 
     // Preview de step anterior
     if (previewStep !== null) {
@@ -153,6 +154,7 @@ export default function App() {
           tts={parsedOutputs.tts}
           metaRoteiro={parsedOutputs.metaRoteiro}
           rawOutput={rawOutputs.roteiro}
+          formato={formatoProd}
           isPreview
         />,
         <DiretorVisualView
@@ -160,6 +162,7 @@ export default function App() {
           visuais={parsedOutputs.visuais}
           consistencia={parsedOutputs.consistencia}
           rawOutput={rawOutputs.visuais}
+          formato={formatoProd}
           isPreview
         />,
         <DistribuidorView
@@ -265,6 +268,7 @@ export default function App() {
             tts={parsedOutputs.tts}
             metaRoteiro={parsedOutputs.metaRoteiro}
             rawOutput={rawOutputs.roteiro}
+            formato={formatoProd}
             onApprove={() => handleApproveStep(1)}
             onRegenerate={() => handleRegenerateStep(1)}
           />
@@ -280,6 +284,7 @@ export default function App() {
             visuais={parsedOutputs.visuais}
             consistencia={parsedOutputs.consistencia}
             rawOutput={rawOutputs.visuais}
+            formato={formatoProd}
             onApprove={() => handleApproveStep(2)}
             onRegenerate={() => handleRegenerateStep(2)}
           />

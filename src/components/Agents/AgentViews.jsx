@@ -50,6 +50,9 @@ export function EstrategistaView({ data, rawOutput, onApprove, onRegenerate, onC
   if (!data && !rawOutput) return null;
 
   const estrategia = data || {};
+  const fmt = (estrategia.formato_imposto || 'shorts').toLowerCase();
+  const isCarrossel = fmt.includes('carrossel');
+  const isStories = fmt.includes('stories');
 
   return (
     <div className="agent-view">
@@ -108,18 +111,26 @@ export function EstrategistaView({ data, rawOutput, onApprove, onRegenerate, onC
                 </div>
               </div>
 
-              <div className="estrategia-field">
-                <div className="estrategia-field-label">Duração</div>
-                <div className="estrategia-field-value">
-                  {estrategia.duracao_alvo || '—'}
-                  {estrategia.duracao_segundos ? ` (${estrategia.duracao_segundos}s)` : ''}
+              {!isCarrossel && !isStories && (
+                <div className="estrategia-field">
+                  <div className="estrategia-field-label">Duração</div>
+                  <div className="estrategia-field-value">
+                    {estrategia.duracao_alvo || '—'}
+                    {estrategia.duracao_segundos ? ` (${estrategia.duracao_segundos}s)` : ''}
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="estrategia-field">
-                <div className="estrategia-field-label">Cenas Estimadas</div>
+                <div className="estrategia-field-label">
+                  {isCarrossel ? 'Lâminas Estimadas' : isStories ? 'Telas Estimadas' : 'Cenas Estimadas'}
+                </div>
                 <div className="estrategia-field-value">
-                  {estrategia.cenas_estimadas || '—'} cenas
+                  {isCarrossel
+                    ? `${estrategia.laminas_estimadas || '—'} lâminas`
+                    : isStories
+                    ? `${estrategia.telas_estimadas || '—'} telas`
+                    : `${estrategia.cenas_estimadas || '—'} cenas`}
                 </div>
               </div>
 
@@ -173,8 +184,11 @@ export function EstrategistaView({ data, rawOutput, onApprove, onRegenerate, onC
 // ═══════════════════════════════════════════════════
 // AGENTE 2 — ROTEIRISTA
 // ═══════════════════════════════════════════════════
-export function RoteiristaView({ cenas, tts, metaRoteiro, rawOutput, onApprove, onRegenerate, isPreview = false }) {
+export function RoteiristaView({ cenas, tts, metaRoteiro, rawOutput, onApprove, onRegenerate, isPreview = false, formato = 'Shorts' }) {
   const hasParsed = cenas && cenas.length > 0;
+  const fmt = formato.toLowerCase();
+  const isCarrossel = fmt.includes('carrossel');
+  const isStories = fmt.includes('stories');
 
   return (
     <div className="agent-view">
@@ -182,7 +196,13 @@ export function RoteiristaView({ cenas, tts, metaRoteiro, rawOutput, onApprove, 
         <div className="agent-icon roteirista">✍️</div>
         <div>
           <h2 className="agent-title">Roteirista</h2>
-          <p className="agent-subtitle">Roteiro cena a cena para vídeo curto</p>
+          <p className="agent-subtitle">
+            {isCarrossel
+              ? 'Estrutura de lâminas para post carrossel'
+              : isStories
+              ? 'Sequência de telas para Stories'
+              : 'Roteiro cena a cena para vídeo curto'}
+          </p>
         </div>
         <span className="agent-model-badge">{AGENT_STEPS[1].modelo.toUpperCase()}</span>
       </div>
@@ -197,7 +217,9 @@ export function RoteiristaView({ cenas, tts, metaRoteiro, rawOutput, onApprove, 
                   <Badge color="blue">⏱ {metaRoteiro.duracaoTotal}s total</Badge>
                 )}
                 {metaRoteiro.totalCenas && (
-                  <Badge color="neutral">🎬 {metaRoteiro.totalCenas} cenas</Badge>
+                  <Badge color="neutral">
+                    {isCarrossel ? '🖼️' : isStories ? '⭕' : '🎬'} {metaRoteiro.totalCenas} {isCarrossel ? 'lâminas' : isStories ? 'telas' : 'cenas'}
+                  </Badge>
                 )}
               </div>
             )}
@@ -237,8 +259,8 @@ export function RoteiristaView({ cenas, tts, metaRoteiro, rawOutput, onApprove, 
               })}
             </div>
 
-            {/* TTS Script */}
-            {tts && (
+            {/* TTS Script — apenas para Shorts (formatos com narração) */}
+            {tts && !isCarrossel && !isStories && (
               <div className="tts-section">
                 <h3 className="tts-title">🎤 Script TTS (ElevenLabs)</h3>
                 <CopyBlock text={tts} />
@@ -270,9 +292,13 @@ export function RoteiristaView({ cenas, tts, metaRoteiro, rawOutput, onApprove, 
 import { useState } from 'react';
 import { Tabs } from '../UI/index.jsx';
 
-export function DiretorVisualView({ visuais, consistencia, rawOutput, onApprove, onRegenerate, isPreview = false }) {
+export function DiretorVisualView({ visuais, consistencia, rawOutput, onApprove, onRegenerate, isPreview = false, formato = 'Shorts' }) {
   const [activeTabs, setActiveTabs] = useState({});
   const hasParsed = visuais && visuais.length > 0;
+  const fmt = formato.toLowerCase();
+  const isCarrossel = fmt.includes('carrossel');
+  const isStories = fmt.includes('stories');
+  const labelUnidade = isCarrossel ? 'Lâmina' : isStories ? 'Tela' : 'Cena';
 
   const handleTabChange = (cenaNum, tabId) => {
     setActiveTabs(prev => ({ ...prev, [cenaNum]: tabId }));
@@ -296,7 +322,7 @@ export function DiretorVisualView({ visuais, consistencia, rawOutput, onApprove,
               <div key={i} className="visual-cena">
                 <h4 style={{ marginBottom: 'var(--space-3)' }}>
                   <Badge color="purple" style={{ marginRight: 8 }}>
-                    Cena {String(visual.numero || i + 1).padStart(2, '0')}
+                    {labelUnidade} {String(visual.numero || i + 1).padStart(2, '0')}
                   </Badge>
                   {visual.nome}
                 </h4>

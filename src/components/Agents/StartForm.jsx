@@ -10,16 +10,23 @@ const ESTILOS_OPCOES = [
   { value: 'PINTURA', label: 'Pintura', emoji: '🎨', desc: 'Arte conceitual' },
 ];
 
+const FORMATOS_OPCOES = [
+  { value: 'Shorts', label: 'Shorts', emoji: '🎬', desc: 'Vídeo vertical 9:16' },
+  { value: 'Carrossel', label: 'Carrossel', emoji: '🖼️', desc: 'Post com lâminas' },
+  { value: 'Stories', label: 'Stories', emoji: '⭕', desc: 'Sequência de telas' },
+];
+
 export default function StartForm({ onStart, hasApiKey, onOpenSettings }) {
   const [tema, setTema] = useState('');
   const [objetivo, setObjetivo] = useState('');
   const [contextoExtra, setContextoExtra] = useState('');
   const [estiloForcado, setEstiloForcado] = useState('AUTO');
+  const [formato, setFormato] = useState('Shorts');
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!tema.trim()) return;
-    onStart(tema.trim(), objetivo, contextoExtra.trim(), 'Shorts', estiloForcado);
+    onStart(tema.trim(), objetivo, contextoExtra.trim(), formato, estiloForcado);
   };
 
   const dias = diasAteEnem();
@@ -94,6 +101,23 @@ export default function StartForm({ onStart, hasApiKey, onOpenSettings }) {
                 placeholder={`Ex: Faltam ${dias} dias pro ENEM, focar em dicas práticas de última hora`}
                 rows={3}
               />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">📐 Formato</label>
+              <div className="start-form-formatos">
+                {FORMATOS_OPCOES.map((fmt) => (
+                  <div
+                    key={fmt.value}
+                    className={`estilo-option ${formato === fmt.value ? 'selected' : ''}`}
+                    onClick={() => setFormato(fmt.value)}
+                  >
+                    <span className="estilo-option-emoji">{fmt.emoji}</span>
+                    <span className="estilo-option-label">{fmt.label}</span>
+                    <span className="estilo-option-desc">{fmt.desc}</span>
+                  </div>
+                ))}
+              </div>
             </div>
 
             <button
