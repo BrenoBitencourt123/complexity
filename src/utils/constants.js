@@ -1,43 +1,20 @@
 // ═══════════════════════════════════════════════════
 // ATLAS AGENCY — Constantes do Sistema
-// Blocos mestres SKETCH/PINTURA, prompts negativos
+// Style seeds portados do project-bridge
 // ═══════════════════════════════════════════════════
 
-export const ESTILOS_VISUAIS = {
-  SKETCH: {
-    nome: 'Sketch',
-    descricao: 'Esboço educacional clean — papel bege, cinza + azul como destaque',
-    emoji: '✏️',
-    cor: '#4A90E2',
-    usoIdeal: 'Conteúdo explicativo, matemático, científico, diagramas',
-    blocoMestre: `ESTILO MESTRE (aplique em todos os elementos): Ilustração desenhada à mão, estilo esboço educacional clean, papel bege/creme suave (#F5F0E8). Paleta: tons de cinza (#444444 traços) com APENAS azul (#4A90E2) como cor de destaque — use o azul somente para o elemento mais importante da cena. Técnica: hachura leve a lápis, linhas limpas, aspecto de material didático profissional. Feel: startup de educação, clean, moderno e confiável. NUNCA use cores fora desta paleta.`,
-    blocoMestreSimplificado: `Ilustração desenhada à mão sobre papel bege/creme (#F5F0E8).
-Traços em cinza (#444444) com azul (#4A90E2) apenas no elemento mais importante.
-Hachura leve a lápis, linhas limpas, aspecto de material didático.
-Clean, moderno e confiável. NUNCA use cores fora desta paleta.`,
-    promptNegativo: `photorealistic, photograph, 3D render, smooth shading, colorful, painted, digital art,
-gradient, flat design, vector, clip art, cartoon, anime, watercolor, oil painting,
-blurry, low quality, text overlay, watermark, logo, colored background, white background,
-vibrant colors, saturated colors, multiple colors`,
-  },
+// Portado de project-bridge/src/lib/buildImagePrompt.ts
+export const STYLE_SEEDS = {
+  padrao: `ESTILO MESTRE (aplique em todos os elementos): Ilustração desenhada à mão, estilo esboço educacional clean, papel bege/creme suave (#F5F0E8). Paleta: tons de cinza (#444444 traços) com APENAS azul (#4A90E2) como cor de destaque — use o azul somente para o elemento mais importante da cena. Técnica: hachura leve a lápis, linhas limpas, aspecto de material didático profissional. Feel: startup de educação, clean, moderno e confiável. NUNCA use cores fora desta paleta.`,
 
-  PINTURA: {
-    nome: 'Pintura',
-    descricao: 'Pintura digital texturizada — cores vibrantes, estilo artístico moderno',
-    emoji: '🎨',
-    cor: '#8b5cf6',
-    usoIdeal: 'Conteúdo emocional, motivacional, histórico, literário',
-    blocoMestre: `ESTILO MESTRE (aplique em todos os elementos): Pintura digital expressiva e COLORIDA, estilo arte conceitual de mesa digitalizadora. Paleta OBRIGATORIAMENTE rica e saturada — use laranja vibrante (#F97316), azul royal (#3B82F6), roxo (#8B5CF6) e amarelo quente (#FBBF24) como cores dominantes. Fundo com gradiente de cor quente ou fria intensa, nunca cinza ou neutro. Pinceladas visíveis e textura de tinta digital em todas as superfícies. Técnica: sobreposição de camadas de cores expressivas, contrastes fortes entre luz (tons claros saturados) e sombra (tons escuros coloridos, não pretos). O acabamento é texturizado e tátil. Feel: arte conceitual imersiva, vibrante, com energia visual alta. NUNCA use paleta monocromática, tons de cinza como cor principal ou cenas sem cor saturada.`,
-    blocoMestreSimplificado: `Pintura digital expressiva, cores VIBRANTES e saturadas obrigatórias.
-Paleta: laranja (#F97316), azul royal (#3B82F6), roxo (#8B5CF6), amarelo (#FBBF24).
-Fundo com gradiente de cor intensa — nunca cinza ou neutro.
-Pinceladas visíveis, textura de tinta digital, contraste forte luz/sombra colorida.
-Feel: arte conceitual imersiva e energética. NUNCA paleta monocromática ou cinza dominante.`,
-    promptNegativo: `photorealistic, photograph, 3D render, smooth CGI, flat design, vector art, line art,
-sketch, pencil drawing, anime, cartoon, blurry, low quality, text overlay, watermark,
-logo, clipart, stock photo, monochromatic, grayscale, desaturated, muted colors, gray background`,
-  },
+  sketch: `ESTILO MESTRE (aplique em todos os elementos): Ilustração desenhada à mão, estilo esboço educacional, papel bege/creme texturizado (#E8E0D0). Paleta restrita: preto, branco e cinza (#2C2C2C traços) com APENAS laranja (#E8610A) como cor de destaque — use o laranja somente para o elemento mais importante da cena. Técnica: hachura a lápis, ligeira aspereza, traços irregulares que parecem feitos à mão. Feel: caderno de estudante, anotação de aula, didático e acessível. NUNCA use cores fora desta paleta.`,
+
+  impacto: `ESTILO MESTRE (aplique em todos os elementos): Ilustração cartoon/quadrinho com texturas de meio-tom (halftone) e sombreamento pop-art retrô. Paleta quente e rica: âmbar (#F5A623), laranja (#E8610A), azul-teal (#1A9E9E), marrom (#7B4F2E), verde terroso (#5A7A3A). Técnica: contornos pretos espessos, halftone nas sombras, alto contraste dramático. Feel: quadrinho educacional, energia, impacto visual imediato. NUNCA use neon, NUNCA use pastel, NUNCA use realismo fotográfico.`,
+
+  pintura: `ESTILO MESTRE (aplique em todos os elementos): Pintura digital texturizada, estilo arte conceitual de mesa digitalizadora. Visíveis pinceladas de tinta digital e texturas de superfície. Técnica: sobreposição de camadas de cores e pinceladas expressivas e não polidas. O acabamento não é liso; é texturizado e tátil. Feel: arte conceitual imersiva, artesanal, focada na inspeção de dados. NUNCA use renderização 3D lisa ou estilo de animação limpo.`,
 };
+
+export const ESTILO_PADRAO = 'padrao';
 
 export const OBJETIVOS = [
   { value: 'crescimento', label: 'Crescimento Orgânico', emoji: '📈', desc: 'Aumentar alcance e seguidores' },

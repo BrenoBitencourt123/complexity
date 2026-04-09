@@ -262,20 +262,37 @@ export function usePipeline({ onAgentComplete } = {}) {
   // ─── Executar Agente 3: Diretor Visual ───
   const executarDiretorVisual = useCallback(async () => {
     const { parseVisuais, parseConsistencia } = await import('../services/parser.js');
+    const { buildImagePrompt } = await import('../utils/buildImagePrompt.js');
+
+    // Extrai estilo e formato da estratégia salva
+    const estrategiaRaw = rawOutputsRef.current.estrategia || '';
+    const estiloMatch  = estrategiaRaw.match(/estilo_visual:\s*["']?(\w+)["']?/i);
+    const formatoMatch = estrategiaRaw.match(/formato_imposto:\s*["']?(\w+)["']?/i);
+    const estilo  = estiloMatch?.[1]?.toLowerCase() || 'padrao';
+    const formato = formatoMatch?.[1]?.toLowerCase() || 'shorts';
 
     await executarAgente(
       'diretor-visual',
       promptDiretorVisual,
-      {
-        estrategia: rawOutputsRef.current.estrategia,
-        roteiro: rawOutputsRef.current.roteiro,
-      },
+      { roteiro: rawOutputsRef.current.roteiro },
       'visuais',
       2,
-      (text) => ({
-        visuais: parseVisuais(text),
-        consistencia: parseConsistencia(text),
-      })
+      (text) => {
+        const parsed = parseVisuais(text);
+        const total = parsed.length;
+        const visuais = parsed.map((v, idx) => ({
+          ...v,
+          opcaoA: buildImagePrompt({
+            imagePrompt: v.imagePrompt,
+            narracao:    v.narracao,
+            styleName:   estilo,
+            indiceCena:  idx,
+            totalCenas:  total,
+            formato,
+          }),
+        }));
+        return { visuais, consistencia: parseConsistencia(text) };
+      }
     );
   }, [executarAgente]);
 

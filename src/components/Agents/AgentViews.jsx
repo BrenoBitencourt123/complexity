@@ -293,16 +293,11 @@ import { useState } from 'react';
 import { Tabs } from '../UI/index.jsx';
 
 export function DiretorVisualView({ visuais, consistencia, rawOutput, onApprove, onRegenerate, isPreview = false, formato = 'Shorts' }) {
-  const [activeTabs, setActiveTabs] = useState({});
   const hasParsed = visuais && visuais.length > 0;
   const fmt = formato.toLowerCase();
   const isCarrossel = fmt.includes('carrossel');
   const isStories = fmt.includes('stories');
   const labelUnidade = isCarrossel ? 'Lâmina' : isStories ? 'Tela' : 'Cena';
-
-  const handleTabChange = (cenaNum, tabId) => {
-    setActiveTabs(prev => ({ ...prev, [cenaNum]: tabId }));
-  };
 
   return (
     <div className="agent-view">
@@ -310,7 +305,7 @@ export function DiretorVisualView({ visuais, consistencia, rawOutput, onApprove,
         <div className="agent-icon diretor-visual">🎨</div>
         <div>
           <h2 className="agent-title">Diretor Visual</h2>
-          <p className="agent-subtitle">Prompts de imagem por cena (Opção A + B)</p>
+          <p className="agent-subtitle">Prompts de imagem por cena</p>
         </div>
         <span className="agent-model-badge">{AGENT_STEPS[2].modelo.toUpperCase()}</span>
       </div>
@@ -331,23 +326,8 @@ export function DiretorVisualView({ visuais, consistencia, rawOutput, onApprove,
                   <div className="visual-cena-desc">{visual.descricao}</div>
                 )}
 
-                <div className="visual-tabs">
-                  <Tabs
-                    tabs={[
-                      { id: 'a', label: 'Opção A — API', emoji: '🤖' },
-                      { id: 'b', label: 'Opção B — Manual', emoji: '✋' },
-                    ]}
-                    activeTab={activeTabs[visual.numero] || 'a'}
-                    onChange={(tabId) => handleTabChange(visual.numero, tabId)}
-                  />
-                </div>
-
                 <div className="visual-prompt-content">
-                  {(activeTabs[visual.numero] || 'a') === 'a' ? (
-                    <CopyBlock text={visual.opcaoA || 'Prompt não disponível'} />
-                  ) : (
-                    <CopyBlock text={visual.opcaoB || 'Prompt não disponível'} />
-                  )}
+                  <CopyBlock text={visual.opcaoA || 'Prompt não disponível'} />
                 </div>
               </div>
             ))}

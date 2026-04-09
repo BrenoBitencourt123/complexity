@@ -3,7 +3,7 @@
 // Parametrizados com inputs de cada fase
 // ═══════════════════════════════════════════════════
 
-import { ATLAS_BRAND, ESTILOS_VISUAIS, PILARES_CONTEUDO } from '../utils/constants.js';
+import { ATLAS_BRAND, PILARES_CONTEUDO } from '../utils/constants.js';
 import { diasAteEnem, textoEnem } from '../utils/enem.js';
 
 // Extrai campos do YAML do Estrategista sem usar JSON.parse
@@ -56,7 +56,7 @@ ESTRATEGIA:
   angulo: "[ângulo específico]"
   objetivo: "[crescimento | conversao | retencao | awareness]"
   ${isVideo ? 'duracao_alvo: "[15-30s | 30-60s]"\n  cenas_estimadas: [número]' : ''}${isCarrossel ? 'laminas_estimadas: [3 a 7]' : ''}${isStories ? 'telas_estimadas: [3 a 5]' : ''}
-  estilo_visual: "[SKETCH | PINTURA]"
+  estilo_visual: "[padrao | sketch | impacto | pintura]"
   justificativa: "[2-3 frases justificando as decisões]"
   hook_sugerido: "[frase de hook ou título matador]"
   cta_sugerido: "[call to action específico]"`,
@@ -132,16 +132,18 @@ CONTEÚDO:
 ---`;
   } else {
     // Padrão Vídeo
-    instrucaoRegras = `1. Hook nos primeiros 3 segundos — criar tensão.
-2. Ritmo natural — escrita como alguém falaria.
-3. CTA claro e focado.
-4. Explique jargões.`;
+    instrucaoRegras = `1. Hook nos primeiros 3 segundos — criar tensão imediata (pergunta, dado surpreendente ou afirmação provocativa).
+2. Ritmo natural — escrita como alguém falaria. Alterne frases curtas (impacto) com médias (explicação). Nunca três frases longas seguidas.
+3. Cada cena deve ter uma revelação, virada ou metáfora NOVA — nunca repita o mesmo setup visual.
+4. Prefira 5–7 cenas para vídeos de 30–60s. Cenas curtas criam ritmo.
+5. CTA claro, direto e específico na última cena.
+6. Explique jargões de forma natural dentro da narração.`;
 
     instrucaoEstrutura = `ESTRUTURA OBRIGATÓRIA:
-CENA 01 | HOOK (2–4s)
-CENA 02 | IDENTIFICAÇÃO (3–6s)
-CENA 03 até N-1 | DESENVOLVIMENTO
-CENA N | CTA (3–5s)
+CENA 01 | HOOK (2–3s) — pergunta ou afirmação que gera tensão imediata
+CENA 02 | IDENTIFICAÇÃO (3–5s) — o problema que o espectador reconhece
+CENA 03 até N-1 | DESENVOLVIMENTO — uma revelação por cena
+CENA N | CTA (2–3s)
 
 FORMATO DE CADA CENA:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -231,113 +233,50 @@ Mande o JSON final. Sem markdowns extras.`,
 
 // ─── AGENTE 3: DIRETOR VISUAL ───
 
-export function promptDiretorVisual({ estrategia, roteiro }) {
-  const est = parseEstYaml(estrategia);
-    
-  const estilo = est?.estilo_visual || 'SKETCH';
-  const formato = est?.formato_imposto?.toLowerCase() || 'shorts';
-
-  const estiloConfig = ESTILOS_VISUAIS[estilo] || ESTILOS_VISUAIS['SKETCH'];
-
+export function promptDiretorVisual({ roteiro }) {
   return {
-    system: `Você é o DIRETOR VISUAL — um diretor de arte sênior especializado em geração de imagens por IA para conteúdo educativo. Seus prompts são detalhados, em camadas, sem ambiguidade.
-O formato base do material de hoje é: ${formato.toUpperCase()}.
+    system: `Você é um diretor de arte para vídeos educacionais ilustrados.
 
-ESTILO DESTE EPISÓDIO: ${estilo}
+REGRAS OBRIGATÓRIAS:
+— IMAGEM_PT DEVE ser em português brasileiro (PT-BR). NUNCA em inglês.
+— NÃO inclua estilo artístico (sketch, cartoon, etc.) — o sistema aplica automaticamente.
+— NÃO inclua ângulo de câmera (close-up, plano médio, etc.) — o sistema aplica automaticamente.
+— Foque 100% no CONTEÚDO VISUAL: O QUE aparece na imagem (objetos, pessoas, ações, dados, metáforas).
+— Descreva uma cena LITERAL e CONCRETA que ilustre ESPECIFICAMENTE o que a narração diz.
+— CADA cena deve ter composição visual COMPLETAMENTE DIFERENTE — nunca repita elementos centrais.
+— Se a narração fala de conceito abstrato, use metáfora visual concreta (balança, engrenagem, ampulheta...).
+— Se houver fórmulas ou números na narração, inclua-os no prompt.
+— Gere cada bloco UMA ÚNICA VEZ, sem rascunho.
 
-BLOCO MESTRE DESTE ESTILO:
-${estiloConfig.blocoMestre}
+ESTRUTURA DO IMAGEM_PT (2–4 frases):
+1. SUJEITO PRINCIPAL: quem ou o que aparece
+2. AÇÃO/ESTADO: o que está acontecendo
+3. ELEMENTOS VISUAIS: objetos secundários, números, setas, textos visíveis na imagem (máx 1–4 palavras)
+4. CONTEXTO ESPACIAL: onde acontece (sem mencionar enquadramento ou estilo)
 
-PROMPT NEGATIVO FIXO:
-${estiloConfig.promptNegativo}
-
-BLOCO MESTRE SIMPLIFICADO (para Opção B):
-${estiloConfig.blocoMestreSimplificado}
-
-Para CADA CENA / LÂMINA / TELA do roteiro enviado, gere o seguinte bloco completo de Direção de Arte:
+Para CADA CENA do roteiro, gere exatamente:
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 VISUAL — CENA [XX] | [NOME]
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DESCRIÇÃO: [o que o espectador vê — 1 frase em português]
+IMAGEM_PT: [2–4 frases em PT-BR seguindo a estrutura acima]
+NARRACAO: [copie aqui o texto exato de narração desta cena]
+TEXTO: "[1–4 palavras visíveis na imagem]"
 
-DESCRIÇÃO DA CENA (OU LÂMINA):
-[o que o espectador vai ver — em português]
-
-─── OPÇÃO A: GERAÇÃO AUTOMÁTICA (API) ───
-
-ESTILO MESTRE:
-[Bloco Mestre completo]
-
-CENA:
-[POSIÇÃO — ABERTURA | DESENVOLVIMENTO | CLÍMAX | CTA]
-[Descrição visual completa em inglês, detalhada]
-
-ENQUADRAMENTO:
-[escolha + justificativa breve]
-
-DICA VISUAL:
-[elemento visual de destaque que ancora a cena]
-
-COMPOSIÇÃO:
-[peso visual da imagem — elemento principal, secundários, profundidade]
-
-TEXTO NA IMAGEM:
-Máximo 1–4 palavras em PT-BR.
-Palavras: "[texto]"
-Estilo: [conforme estilo mestre]
-
-FUNDO:
-[descrição do fundo conforme estilo]
-
-PROPORÇÃO: ${formato.includes('carrossel') ? '1:1 quadrado (1080x1080px) ou 4:5 (1080x1350px)' : '9:16 vertical (1080x1920px)'}
-
-PROMPT_NEGATIVO:
-[prompt negativo fixo + elementos específicos desta cena]
-
-MODELO_SUGERIDO: [flux-dev | ideogram-v2 | dalle-3]
-SEED: [número ou "livre"]
-
-─── OPÇÃO B: PROMPT MANUAL (IDEOGRAM / MIDJOURNEY / CANVA AI) ───
-
-ESTILO MESTRE:
-[versão simplificada em português]
-
-CENA:
-[descrição como para um ilustrador humano]
-
-ENQUADRAMENTO: [mesmo da Opção A]
-COMPOSIÇÃO: [em português]
-TEXTO NA IMAGEM: [mesmo]
-FUNDO: [mesmo]
-REFERÊNCIA DE MOOD: [clima/atmosfera desejada]
-PROPORÇÃO: ${formato.includes('carrossel') ? '1:1 ou 4:5' : '9:16'}
-EVITAR: [lista em português]
-
----
-
-AO FINAL DE TODAS AS CENAS, gere:
+AO FINAL, gere:
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 GUIA DE CONSISTÊNCIA VISUAL
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-ESTILO DO EPISÓDIO: [SKETCH | PINTURA]
-PALETA DE CORES: [3-4 cores com hex + onde aparecem]
-PERSONAGEM RECORRENTE: [descrição detalhada se houver]
+PERSONAGEM RECORRENTE: [descrição se houver]
 ELEMENTOS RECORRENTES: [símbolos/objetos que reaparecem]
-SEED GLOBAL SUGERIDO: [número]
-ARQUIVOS ESPERADOS: lista de cena-XX.png
 NOTA DE PRODUÇÃO: [observações para montagem]`,
 
-    user: `CRIAR DIREÇÃO VISUAL PARA ESTE ROTEIRO:
-
-ESTRATÉGIA:
-${typeof estrategia === 'string' ? estrategia : JSON.stringify(estrategia, null, 2)}
-
-ROTEIRO:
+    user: `ROTEIRO:
 ${roteiro}
 
-Gere os prompts visuais para cada cena/lâmina (Opção A + Opção B) e o Guia de Consistência Visual.`,
+Gere os blocos visuais para cada cena e o Guia de Consistência Visual.`,
   };
 }
 

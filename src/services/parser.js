@@ -157,20 +157,22 @@ export function parseVisuais(texto) {
 
       const visual = { numero: positions[i].num, nome: positions[i].nome };
 
-      // Descrição da cena — para antes de OPÇÃO A/B ou de qualquer separador
-      const descMatch = bloco.match(/DESCRIÇÃO DA CENA[^:]*:\s*\n([\s\S]*?)(?=\s*[-—–]{2,}\s*OPÇÃO|\s*OPÇÃO [AB]|$)/i);
-      if (descMatch) visual.descricao = descMatch[1].trim();
+      // Campos simples gerados pelo LLM (novo formato enxuto)
+      const field = (label) => {
+        const r = new RegExp(`^${label}:\\s*(.+)`, 'im');
+        const match = bloco.match(r);
+        return match ? match[1].trim().replace(/^["']|["']$/g, '') : null;
+      };
+      const multiField = (label) => {
+        const r = new RegExp(`^${label}:\\s*([\\s\\S]*?)(?=^[A-ZÁÉÍÓÚ_]+:|━|$)`, 'im');
+        const match = bloco.match(r);
+        return match ? match[1].trim() : null;
+      };
 
-      // opcaoA / opcaoB — aceita variações como "—— OPÇÃO A ——", "OPÇÃO A:", etc.
-      const opcaoAIdx = bloco.search(/[-—–]*\s*OPÇÃO\s+A\b/i);
-      const opcaoBIdx = bloco.search(/[-—–]*\s*OPÇÃO\s+B\b/i);
-      if (opcaoAIdx !== -1) {
-        const endIdx = opcaoBIdx !== -1 ? opcaoBIdx : bloco.length;
-        visual.opcaoA = bloco.slice(opcaoAIdx, endIdx).trim();
-      }
-      if (opcaoBIdx !== -1) {
-        visual.opcaoB = bloco.slice(opcaoBIdx).trim();
-      }
+      visual.descricao   = field('DESCRIÇÃO') || multiField('DESCRIÇÃO');
+      visual.imagePrompt = multiField('IMAGEM_PT');
+      visual.narracao    = multiField('NARRACAO') || field('NARRACAO');
+      visual.texto       = field('TEXTO');
 
       visuais.push(visual);
     }
