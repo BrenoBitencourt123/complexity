@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Button } from '../UI/index.jsx';
-import { analyzePerformanceData, getCurrentIntel } from '../../services/dataAnalyst.js';
+import { analyzePerformanceData, getCurrentIntel, extractNarrativeInsights } from '../../services/dataAnalyst.js';
 import { useNarrativeMemory } from '../../hooks/useNarrativeMemory.js';
+import { updateMemory } from '../../services/narrativeMemory.js';
 import './DataIntelPanel.css';
 
 const FASES = [
@@ -9,6 +10,8 @@ const FASES = [
   { value: 'consideracao', label: 'Consideração', desc: 'Autoridade e valor', color: '#8b5cf6' },
   { value: 'conversao', label: 'Conversão', desc: 'CTAs e vendas', color: '#22c55e' },
 ];
+
+const ARCO_FORM_VAZIO = { nome_arco: '', posts_planejados: 4, proximo_passo: '' };
 
 function diasParaExpirar(adicionadoEm) {
   const diff = 30 - (new Date() - new Date(adicionadoEm)) / 86400000;
@@ -22,7 +25,27 @@ export default function DataIntelPanel({ onBack }) {
   const [error, setError] = useState(null);
   const [novoProibido, setNovoProibido] = useState('');
 
-  const { memory, loading: loadingMemory, updateFase, addProibido, resetMemory } = useNarrativeMemory();
+  // Insights pós-análise (sugestões de ganchos e fase)
+  const [insights, setInsights] = useState(null);
+  const [ganchosAdicionados, setGanchosAdicionados] = useState([]);
+
+  // UI de ganchos
+  const [novoGancho, setNovoGancho] = useState('');
+
+  // UI de arcos
+  const [showArcoForm, setShowArcoForm] = useState(false);
+  const [arcoForm, setArcoForm] = useState(ARCO_FORM_VAZIO);
+
+  // Métricas da conta
+  const [metricasForm, setMetricasForm] = useState({ seguidores: '', crescimento_semanal: '', taxa_engajamento: '' });
+  const [salvandoMetricas, setSalvandoMetricas] = useState(false);
+
+  const {
+    memory, loading: loadingMemory,
+    updateFase, addProibido, resetMemory,
+    addGancho, removeGancho,
+    novoArco, avancarArco, concluirArco,
+  } = useNarrativeMemory();
 
   useEffect(() => {
     async function loadIntel() {
@@ -32,14 +55,21 @@ export default function DataIntelPanel({ onBack }) {
     loadIntel();
   }, []);
 
+  // ─── Análise de performance + extração de insights ───
   const handleAnalyze = async () => {
     if (!rawData.trim()) return;
     setIsAnalyzing(true);
     setError(null);
+    setInsights(null);
+    setGanchosAdicionados([]);
     try {
       const result = await analyzePerformanceData(rawData);
       setIntel(result);
       setRawData('');
+      // Extrai sugestões narrativas em paralelo (não bloqueia)
+      extractNarrativeInsights(result)
+        .then(sugestoes => setInsights(sugestoes))
+        .catch(() => {});
     } catch (err) {
       setError(err.message);
     } finally {
@@ -57,6 +87,54 @@ export default function DataIntelPanel({ onBack }) {
   const handleReset = async () => {
     if (!window.confirm('Resetar toda a memória narrativa? Isso apaga temas cobertos, arcos, ganchos e temas proibidos.')) return;
     await resetMemory();
+  };
+
+  const handleSalvarGancho = async (gancho) => {
+    await addGancho(gancho);
+    setGanchosAdicionados(prev => [...prev, gancho]);
+  };
+
+  const handleAddGanchoManual = async () => {
+    if (!novoGancho.trim()) return;
+    await addGancho(novoGancho.trim());
+    setNovoGancho('');
+  };
+
+  const handleCriarArco = async () => {
+    if (!arcoForm.nome_arco.trim()) return;
+    await novoArco(arcoForm);
+    setArcoForm(ARCO_FORM_VAZIO);
+    setShowArcoForm(false);
+  };
+
+  const handleAplicarFase = async (fase) => {
+    await updateFase(fase);
+    setInsights(prev => prev ? { ...prev, fase_sugerida: null } : prev);
+  };
+
+  // Sincroniza form de métricas quando a memória carrega
+  useEffect(() => {
+    if (memory?.metricas_conta) {
+      const m = memory.metricas_conta;
+      setMetricasForm({
+        seguidores: m.seguidores ?? '',
+        crescimento_semanal: m.crescimento_semanal ?? '',
+        taxa_engajamento: m.taxa_engajamento ?? '',
+      });
+    }
+  }, [memory?.metricas_conta]);
+
+  const handleSalvarMetricas = async () => {
+    setSalvandoMetricas(true);
+    await updateMemory({
+      metricas_conta: {
+        seguidores: parseInt(metricasForm.seguidores) || 0,
+        crescimento_semanal: parseFloat(metricasForm.crescimento_semanal) || 0,
+        taxa_engajamento: parseFloat(metricasForm.taxa_engajamento) || 0,
+        atualizado_em: new Date().toISOString(),
+      },
+    });
+    setSalvandoMetricas(false);
   };
 
   const temasCobertos = memory?.temas_cobertos?.slice(-10).reverse() || [];
@@ -143,6 +221,51 @@ export default function DataIntelPanel({ onBack }) {
               </div>
             </div>
           )}
+
+          {/* ─── Insights para Memória Narrativa (pós-análise) ─── */}
+          {insights && (insights.fase_sugerida || insights.ganchos_sugeridos?.length > 0) && (
+            <div className="intel-insights">
+              <h4 className="intel-insights-title">💡 Insights para Memória Narrativa</h4>
+              <p className="intel-insights-desc">A IA identificou padrões que podem calibrar a estratégia da agência.</p>
+
+              {insights.fase_sugerida && (
+                <div className="intel-fase-sugerida">
+                  <div className="intel-fase-info">
+                    <span className="intel-fase-label">Fase sugerida:</span>
+                    <strong className="intel-fase-value">{insights.fase_sugerida}</strong>
+                    {insights.justificativa_fase && (
+                      <span className="intel-fase-justificativa">{insights.justificativa_fase}</span>
+                    )}
+                  </div>
+                  <Button size="sm" onClick={() => handleAplicarFase(insights.fase_sugerida)}>
+                    Aplicar fase
+                  </Button>
+                </div>
+              )}
+
+              {insights.ganchos_sugeridos?.length > 0 && (
+                <div className="intel-ganchos-sugeridos">
+                  <span className="intel-ganchos-label">Ganchos que performaram bem:</span>
+                  {insights.ganchos_sugeridos.map((g, i) => {
+                    const jaSalvo = ganchosAdicionados.includes(g);
+                    return (
+                      <div key={i} className="intel-gancho-row">
+                        <span className="intel-gancho-texto">{g}</span>
+                        <Button
+                          size="xs"
+                          variant={jaSalvo ? 'ghost' : 'primary'}
+                          disabled={jaSalvo}
+                          onClick={() => handleSalvarGancho(g)}
+                        >
+                          {jaSalvo ? '✓ Salvo' : '+ Salvar'}
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </Card>
       </div>
 
@@ -227,35 +350,155 @@ export default function DataIntelPanel({ onBack }) {
               )}
             </Card>
 
-            {/* Arcos ativos */}
-            {arcosAtivos.length > 0 && (
-              <Card className="narrative-card">
-                <h4 className="narrative-card-title">🎯 Arcos Narrativos Ativos</h4>
+            {/* Arcos narrativos */}
+            <Card className="narrative-card">
+              <div className="narrative-card-header">
+                <h4 className="narrative-card-title">🎯 Arcos Narrativos</h4>
+                <button className="arco-new-btn" onClick={() => setShowArcoForm(v => !v)}>
+                  {showArcoForm ? '✕ Cancelar' : '+ Novo arco'}
+                </button>
+              </div>
+              <p className="narrative-card-desc">Séries de posts conectados. O CMO dá continuidade automaticamente.</p>
+
+              {showArcoForm && (
+                <div className="arco-form">
+                  <input
+                    className="arco-input"
+                    placeholder="Nome do arco (ex: Série de Técnicas de Estudo)"
+                    value={arcoForm.nome_arco}
+                    onChange={e => setArcoForm(f => ({ ...f, nome_arco: e.target.value }))}
+                  />
+                  <div className="arco-form-row">
+                    <label className="arco-label">Posts planejados</label>
+                    <input
+                      className="arco-input arco-input-num"
+                      type="number" min="2" max="10"
+                      value={arcoForm.posts_planejados}
+                      onChange={e => setArcoForm(f => ({ ...f, posts_planejados: parseInt(e.target.value) || 4 }))}
+                    />
+                  </div>
+                  <input
+                    className="arco-input"
+                    placeholder="Próximo passo (ex: post de conversão final)"
+                    value={arcoForm.proximo_passo}
+                    onChange={e => setArcoForm(f => ({ ...f, proximo_passo: e.target.value }))}
+                  />
+                  <Button size="sm" disabled={!arcoForm.nome_arco.trim()} onClick={handleCriarArco}>
+                    Criar arco
+                  </Button>
+                </div>
+              )}
+
+              {arcosAtivos.length === 0 && !showArcoForm ? (
+                <p className="narrative-empty">Nenhum arco ativo. Crie séries de 3–5 posts com narrativa conectada.</p>
+              ) : (
                 <ul className="arco-list">
                   {arcosAtivos.map((a, i) => (
                     <li key={i} className="arco-item">
-                      <div className="arco-nome">{a.nome_arco}</div>
-                      <div className="arco-progress">
-                        {a.posts_feitos}/{a.posts_planejados} posts · próximo: {a.proximo_passo}
+                      <div className="arco-info">
+                        <div className="arco-nome">{a.nome_arco}</div>
+                        <div className="arco-progress">
+                          {a.posts_feitos}/{a.posts_planejados} posts
+                          {a.proximo_passo && ` · próximo: ${a.proximo_passo}`}
+                        </div>
+                      </div>
+                      <div className="arco-actions">
+                        <button className="arco-btn arco-btn-advance" onClick={() => avancarArco(a.nome_arco)} title="+1 post feito">
+                          +1
+                        </button>
+                        <button className="arco-btn arco-btn-done" onClick={() => concluirArco(a.nome_arco)} title="Concluir arco">
+                          ✓
+                        </button>
                       </div>
                     </li>
                   ))}
                 </ul>
-              </Card>
-            )}
+              )}
+            </Card>
 
             {/* Ganchos aprovados */}
-            {ganchosAprovados.length > 0 && (
-              <Card className="narrative-card">
-                <h4 className="narrative-card-title">⚡ Ganchos Aprovados</h4>
-                <p className="narrative-card-desc">Estilo de referência para novos hooks.</p>
+            <Card className="narrative-card">
+              <h4 className="narrative-card-title">⚡ Ganchos Aprovados</h4>
+              <p className="narrative-card-desc">Frases de abertura que performaram bem — o CMO usa como referência de estilo.</p>
+
+              {ganchosAprovados.length > 0 && (
                 <div className="gancho-tags">
                   {ganchosAprovados.map((g, i) => (
-                    <span key={i} className="gancho-tag">{g}</span>
+                    <span key={i} className="gancho-tag">
+                      {g}
+                      <button className="gancho-remove" onClick={() => removeGancho(g)} title="Remover">×</button>
+                    </span>
                   ))}
                 </div>
-              </Card>
-            )}
+              )}
+
+              <div className="gancho-add-row">
+                <input
+                  className="gancho-input"
+                  placeholder="Ex: Você faz isso errado..."
+                  value={novoGancho}
+                  onChange={e => setNovoGancho(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && novoGancho.trim()) {
+                      handleAddGanchoManual();
+                    }
+                  }}
+                />
+                <button
+                  className="proibido-add-btn"
+                  disabled={!novoGancho.trim()}
+                  onClick={handleAddGanchoManual}
+                >+</button>
+              </div>
+            </Card>
+
+            {/* Métricas da conta */}
+            <Card className="narrative-card metrics-card">
+              <h4 className="narrative-card-title">📊 Métricas da Conta</h4>
+              <p className="narrative-card-desc">O CMO usa esses dados para calibrar quando pode vender e qual o ritmo de crescimento.</p>
+              <div className="metrics-form">
+                <label className="metrics-label">
+                  Seguidores totais
+                  <input
+                    className="metrics-input"
+                    type="number"
+                    placeholder="2400"
+                    value={metricasForm.seguidores}
+                    onChange={e => setMetricasForm(f => ({ ...f, seguidores: e.target.value }))}
+                  />
+                </label>
+                <label className="metrics-label">
+                  Crescimento últimos 7 dias (%)
+                  <input
+                    className="metrics-input"
+                    type="number"
+                    placeholder="8"
+                    step="0.1"
+                    value={metricasForm.crescimento_semanal}
+                    onChange={e => setMetricasForm(f => ({ ...f, crescimento_semanal: e.target.value }))}
+                  />
+                </label>
+                <label className="metrics-label">
+                  Taxa de engajamento (%)
+                  <input
+                    className="metrics-input"
+                    type="number"
+                    placeholder="4.2"
+                    step="0.1"
+                    value={metricasForm.taxa_engajamento}
+                    onChange={e => setMetricasForm(f => ({ ...f, taxa_engajamento: e.target.value }))}
+                  />
+                </label>
+              </div>
+              <Button size="sm" disabled={salvandoMetricas} onClick={handleSalvarMetricas}>
+                {salvandoMetricas ? 'Salvando...' : 'Salvar métricas'}
+              </Button>
+              {memory?.metricas_conta?.atualizado_em && (
+                <p className="metrics-updated">
+                  Última atualização: {new Date(memory.metricas_conta.atualizado_em).toLocaleDateString('pt-BR')}
+                </p>
+              )}
+            </Card>
 
           </div>
         )}

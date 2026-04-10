@@ -17,10 +17,9 @@ export const STYLE_SEEDS = {
 export const ESTILO_PADRAO = 'padrao';
 
 export const OBJETIVOS = [
-  { value: 'crescimento', label: 'Crescimento Orgânico', emoji: '📈', desc: 'Aumentar alcance e seguidores' },
-  { value: 'conversao', label: 'Conversão para PRO', emoji: '💰', desc: 'Gerar trials e assinaturas' },
-  { value: 'retencao', label: 'Retenção', emoji: '🔄', desc: 'Engajar quem já usa o Atlas' },
-  { value: 'awareness', label: 'Awareness', emoji: '👁️', desc: 'Fazer a marca ser conhecida' },
+  { value: 'crescimento', label: 'Crescimento Orgânico', emoji: '📈', desc: 'Valor puro, sem mencionar o Atlas' },
+  { value: 'retencao', label: 'Menção Suave', emoji: '🔄', desc: 'Menciona o Atlas de passagem, sem CTA' },
+  { value: 'conversao', label: 'Conversão', emoji: '💰', desc: 'CTA direto para assinar o Atlas' },
 ];
 
 export const DURACOES = [
@@ -127,9 +126,8 @@ export const FORMAT_CONFIG = {
 
 export const OBJETIVO_CONFIG = {
   crescimento: { emoji: '📈', label: 'Crescimento', color: '#3b82f6' },
+  retencao:    { emoji: '🔄', label: 'Menção Suave', color: '#8b5cf6' },
   conversao:   { emoji: '💰', label: 'Conversão',   color: '#22c55e' },
-  retencao:    { emoji: '🔄', label: 'Retenção',    color: '#8b5cf6' },
-  awareness:   { emoji: '👁️', label: 'Awareness',   color: '#f59e0b' },
 };
 
 export const STATUS_PRODUCAO = {

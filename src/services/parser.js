@@ -46,41 +46,57 @@ export function parseEstrategia(texto) {
 
 /**
  * Parseia as cenas do Roteirista (Ou Lâminas/Telas)
+ * Abordagem: encontra headers por regex (igual ao parseVisuais),
+ * sem depender de split por separador específico.
  */
 export function parseCenas(texto) {
   try {
     const cenas = [];
-    const blocos = texto.split(/━{4,}/);
 
-    for (let i = 0; i < blocos.length; i++) {
-      const bloco = blocos[i].trim();
+    // Localiza cada header CENA/LÂMINA/TELA pelo regex — ignora tipo de separador
+    const headerRegex = /^(?:CENA|LÂMINA|TELA)\s+(\d+)\s*\|\s*([^|\n]+?)(?:\s*\|\s*(\d+)s?)?$/gim;
+    const positions = [];
+    let m;
+    while ((m = headerRegex.exec(texto)) !== null) {
+      positions.push({
+        start: m.index,
+        num: parseInt(m[1]),
+        nome: m[2].trim(),
+        duracaoHeader: m[3] ? parseInt(m[3]) : null,
+      });
+    }
 
-      // Detectar header de cena/lâmina/tela
-      const headerMatch = bloco.match(/(?:CENA|LÂMINA|TELA)\s+(\d+)\s*\|\s*(.+?)(?:\s*\|\s*(\d+)s?)?(?=\n|$)/i);
-      if (headerMatch) {
-        const cena = {
-          numero: parseInt(headerMatch[1]),
-          nome: headerMatch[2].trim(),
-          duracaoHeader: headerMatch[3] ? parseInt(headerMatch[3]) : null,
-        };
+    for (let i = 0; i < positions.length; i++) {
+      const start = positions[i].start;
+      const end = i + 1 < positions.length ? positions[i + 1].start : texto.length;
+      const bloco = texto.slice(start, end);
 
-        const conteudo = blocos[i + 1] || bloco;
+      const cena = {
+        numero: positions[i].num,
+        nome: positions[i].nome,
+      };
 
-        const narracaoMatch = conteudo.match(/(?:NARRAÇÃO|CONTEÚDO):\s*\n?"?([^"]*(?:"[^"]*)*?)"?(?=\n\n|\nTEXTO|\nEMOÇÃO|\nDURAÇÃO|$)/is);
-        if (narracaoMatch) cena.narracao = narracaoMatch[1].trim();
+      // Extrai campo simples: pega tudo até a próxima label conhecida ou fim de bloco
+      const campo = (label) => {
+        const r = new RegExp(
+          `(?:${label}):\\s*\\n?"?([\\s\\S]*?)"?(?=\\n(?:NARRAÇÃO|CONTEÚDO|TEXTO NA TELA|TÍTULO NA IMAGEM|EMOÇÃO|DURAÇÃO|CENA|LÂMINA|TELA|---)\\b|\\n{2,}|$)`,
+          'i'
+        );
+        const match = bloco.match(r);
+        return match ? match[1].trim().replace(/^["']|["']$/g, '') : null;
+      };
 
-        const textoTelaMatch = conteudo.match(/(?:TEXTO NA TELA|TÍTULO NA IMAGEM):\s*\n?([\s\S]+?)(?=\n\n|\nEMOÇÃO|\nDURAÇÃO|$)/is);
-        if (textoTelaMatch) cena.textoNaTela = textoTelaMatch[1].trim();
+      cena.narracao    = campo('NARRAÇÃO|CONTEÚDO');
+      cena.textoNaTela = campo('TEXTO NA TELA|TÍTULO NA IMAGEM|TEXTO');
+      cena.emocao      = campo('EMOÇÃO(?:\\s*\\/\\s*ENERGIA)?');
 
-        const emocaoMatch = conteudo.match(/EMOÇÃO\s*\/?\s*ENERGIA:\s*\n?([\s\S]+?)(?=\n\n|\nDURAÇÃO|$)/is);
-        if (emocaoMatch) cena.emocao = emocaoMatch[1].trim();
+      // Duração: prioriza campo DURAÇÃO explícito, cai no header, cai em 3s
+      const duracaoMatch = bloco.match(/DURAÇÃO:\s*(\d+)s?/i);
+      cena.duracao = duracaoMatch
+        ? parseInt(duracaoMatch[1])
+        : (positions[i].duracaoHeader || 3);
 
-        const duracaoMatch = conteudo.match(/DURAÇÃO:\s*(\d+)s?/i);
-        if (duracaoMatch) cena.duracao = parseInt(duracaoMatch[1]);
-        else cena.duracao = cena.duracaoHeader || 5; // Fallback para visuais sem narração
-
-        if (cena.narracao || cena.textoNaTela) cenas.push(cena);
-      }
+      if (cena.narracao || cena.textoNaTela) cenas.push(cena);
     }
 
     return cenas;

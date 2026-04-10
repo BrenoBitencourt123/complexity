@@ -9,6 +9,11 @@ import {
   updateMemory,
   addTemaProibido,
   updateFaseAudiencia,
+  addGanchoAprovado,
+  removeGanchoAprovado,
+  createArco,
+  incrementArco,
+  removeArco,
 } from '../services/narrativeMemory.js';
 
 export function useNarrativeMemory() {
@@ -36,6 +41,33 @@ export function useNarrativeMemory() {
     await refreshMemory();
   }, [refreshMemory]);
 
+  // ─── Ganchos aprovados ───
+  const addGancho = useCallback(async (gancho) => {
+    await addGanchoAprovado(gancho);
+    await refreshMemory();
+  }, [refreshMemory]);
+
+  const removeGancho = useCallback(async (gancho) => {
+    await removeGanchoAprovado(gancho);
+    await refreshMemory();
+  }, [refreshMemory]);
+
+  // ─── Arcos narrativos ───
+  const novoArco = useCallback(async (arco) => {
+    await createArco(arco);
+    await refreshMemory();
+  }, [refreshMemory]);
+
+  const avancarArco = useCallback(async (nomeArco) => {
+    await incrementArco(nomeArco);
+    await refreshMemory();
+  }, [refreshMemory]);
+
+  const concluirArco = useCallback(async (nomeArco) => {
+    await removeArco(nomeArco);
+    await refreshMemory();
+  }, [refreshMemory]);
+
   // ─── Reseta toda a memória para o estado inicial ───
   const resetMemory = useCallback(async () => {
     await updateMemory({
@@ -50,5 +82,17 @@ export function useNarrativeMemory() {
     await refreshMemory();
   }, [refreshMemory]);
 
-  return { memory, loading, updateFase, addProibido, resetMemory, refreshMemory };
+  return {
+    memory,
+    loading,
+    updateFase,
+    addProibido,
+    addGancho,
+    removeGancho,
+    novoArco,
+    avancarArco,
+    concluirArco,
+    resetMemory,
+    refreshMemory,
+  };
 }

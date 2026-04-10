@@ -25,6 +25,35 @@ function getWeekDates() {
   });
 }
 
+// ─── Enforça limites 70/20/10 após geração do LLM ───
+function enforcarMix(plan, limites) {
+  // Degrada conversao excedente → retencao
+  let excessoConversao = 0;
+  for (const d of plan.dias) {
+    for (const t of d.tarefas) {
+      if (t.objetivo === 'conversao') {
+        excessoConversao++;
+        if (excessoConversao > limites.conversao) {
+          t.objetivo = 'retencao';
+        }
+      }
+    }
+  }
+  // Degrada retencao excedente → crescimento
+  let excessoRetencao = 0;
+  for (const d of plan.dias) {
+    for (const t of d.tarefas) {
+      if (t.objetivo === 'retencao') {
+        excessoRetencao++;
+        if (excessoRetencao > limites.retencao) {
+          t.objetivo = 'crescimento';
+        }
+      }
+    }
+  }
+  return plan;
+}
+
 /**
  * CMO Estratégico: gera o plano completo de 7 dias com total autonomia.
  * Decide frequência, formatos, horários e temas baseado no contexto da marca.
@@ -38,6 +67,15 @@ export async function generateWeeklyPlan() {
     getCurrentIntel(),
     getContextoParaCMO().catch(() => ''),
   ]);
+
+  // ─── Limites 70/20/10 hard-coded ───
+  // Base: 9 posts por semana (estimativa conservadora)
+  const POSTS_BASE = 9;
+  const limites = {
+    crescimento: Math.round(POSTS_BASE * 0.70), // 6
+    retencao: Math.round(POSTS_BASE * 0.20),    // 2 (menção suave ao Atlas)
+    conversao: Math.max(1, Math.round(POSTS_BASE * 0.10)), // 1
+  };
 
   const intelBlock = intel
     ? `INTELIGÊNCIA DE PERFORMANCE (USE OBRIGATORIAMENTE):
@@ -68,7 +106,11 @@ PRINCÍPIOS INVIOLÁVEIS DO CMO:
 1. AUTONOMIA TOTAL: Você decide tudo — frequência, formato, horário, tema. O cliente não decide.
 2. FREQUÊNCIA VARIÁVEL: Cada dia pode ter entre 1 e 4 posts. Não é fixo. Pense estrategicamente.
 3. MIX DE FORMATOS: Priorize Shorts (algoritmo de descoberta) > Carrossel (autoridade/salvamentos) > Stories (comunidade).
-4. REGRA JAB/HOOK: A cada 3-4 posts de crescimento/valor, 1 de conversão direta. Nunca venda demais.
+4. MIX OBRIGATÓRIO 70/20/10:
+   - 70% CRESCIMENTO (objetivo "crescimento"): conteúdo puro de valor SEM mencionar o Atlas. Dicas, provocações, neurociência, ENEM. Máx ${limites.crescimento} posts.
+   - 20% MENÇÃO SUAVE (objetivo "retencao"): menciona o Atlas de passagem como ferramenta, sem pressionar. Ex: "o Atlas tem uma trilha de Redação se quiser praticar isso". Máx ${limites.retencao} posts.
+   - 10% CONVERSÃO (objetivo "conversao"): CTA direto para assinar/comprar o Atlas. APENAS ${limites.conversao} post nesta semana inteira. Use quando o ciclo permitir.
+   REGRA DE OURO: Se o CICLO na memória disser que NÃO pode converter, não coloque nenhum post de conversão.
 5. HORÁRIOS BRASILEIROS: Picos reais — 7h-9h (manhã de estudante), 12h-14h (almoço), 19h-22h (noite de semana).
 6. NARRATIVA SEMANAL: Os posts da semana devem contar uma história coesa, não serem aleatórios.
 7. FIM DE SEMANA LEVE: Sábado máx. 2 posts, Domingo máx. 1 (estudante descansa).
@@ -79,7 +121,7 @@ PRINCÍPIOS INVIOLÁVEIS DO CMO:
 12. GANCHOS: Use os ganchos_aprovados como referência de estilo e energia.` : ''}
 
 FORMATOS PERMITIDOS: "Shorts", "Carrossel", "Stories"
-OBJETIVOS PERMITIDOS: "crescimento", "conversao", "retencao", "awareness"
+OBJETIVOS PERMITIDOS: "crescimento", "retencao", "conversao"
 
 SAÍDA: JSON puro, sem markdown, seguindo EXATAMENTE este schema:
 {
@@ -97,7 +139,7 @@ SAÍDA: JSON puro, sem markdown, seguindo EXATAMENTE este schema:
           "formato": "Shorts|Carrossel|Stories",
           "tema": "Título chamativo e concreto",
           "angulo": "Psicologia e diferencial desta abordagem",
-          "objetivo": "crescimento|conversao|retencao|awareness",
+          "objetivo": "crescimento|retencao|conversao",
           "pilar": "Nome do Pilar",
           "contextoExtra": "Instruções específicas para o roteirista"
         }
@@ -123,7 +165,8 @@ Monte o plano estratégico completo dos 7 dias. Retorne APENAS o JSON.`;
     });
 
     const text = result.response.text();
-    return JSON.parse(text);
+    const plan = JSON.parse(text);
+    return enforcarMix(plan, limites);
   } catch (error) {
     console.error('Erro ao gerar plano semanal:', error);
     return generateWeeklyPlanFallback(weekDates);
@@ -141,7 +184,7 @@ function generateWeeklyPlanFallback(weekDates) {
       { horario: '19h00', formato: 'Shorts', tema: 'Macete de Estequiometria que cai todo ENEM', angulo: 'Método visual que substitui 2h de aula', objetivo: 'retencao', pilar: 'Conteúdo de Matéria', contextoExtra: 'Mostre o cálculo sendo resolvido de forma visual.' },
     ],
     [
-      { horario: '12h00', formato: 'Stories', tema: 'Qual matéria você mais tem medo na prova?', angulo: 'Enquete que vira pauta dos próximos posts', objetivo: 'awareness', pilar: 'Motivacional/Acolhimento', contextoExtra: 'Use enquete interativa. Responda os DMs.' },
+      { horario: '12h00', formato: 'Stories', tema: 'Qual matéria você mais tem medo na prova?', angulo: 'Enquete que vira pauta dos próximos posts', objetivo: 'crescimento', pilar: 'Motivacional/Acolhimento', contextoExtra: 'Use enquete interativa. Responda os DMs.' },
       { horario: '19h30', formato: 'Shorts', tema: 'Isso é o que separa quem passa de quem não passa', angulo: 'Mentalidade vs. método — insight que muda perspectiva', objetivo: 'crescimento', pilar: 'Motivacional/Acolhimento', contextoExtra: 'Tom motivacional. Finalize com CTA suave.' },
     ],
     [
@@ -162,7 +205,7 @@ function generateWeeklyPlanFallback(weekDates) {
   return {
     estrategia_semanal: 'Semana de lançamento. Foco em crescimento orgânico via Shorts e autoridade via Carrossel. Uma conversão direta na quinta-feira. Narrativa central: a diferença entre estudar muito e estudar certo.',
     total_posts: fallbackTasks.reduce((acc, d) => acc + d.length, 0),
-    mix: { crescimento: 5, autoridade: 3, conversao: 1 },
+    mix: { crescimento: 6, retencao: 2, conversao: 1 },
     dias: dates.map((d, i) => ({
       dia: d.dia,
       data: d.data,

@@ -71,6 +71,41 @@ Gere seu Relatório de Inteligência de Performance APENAS NO FORMATO JSON solic
 }
 
 /**
+ * Com base no relatório de performance gerado, extrai sugestões para a memória narrativa:
+ * ganchos que performaram bem e fase sugerida da audiência.
+ */
+export async function extractNarrativeInsights(analysisResult) {
+  const genAI = getGenAI();
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
+  const prompt = `Com base neste relatório de performance de conteúdo educacional:
+${JSON.stringify(analysisResult, null, 2)}
+
+Extraia insights para calibrar a estratégia narrativa da marca. Retorne APENAS um JSON válido:
+{
+  "ganchos_sugeridos": ["frase de abertura 1", "frase de abertura 2"],
+  "fase_sugerida": "awareness" | "consideracao" | "conversao" | null,
+  "justificativa_fase": "1 frase explicando por quê essa fase faz sentido agora"
+}
+
+Regras:
+- ganchos_sugeridos: extraia 2-4 padrões de abertura que geraram engajamento (ex: "Você faz isso errado...", "Ninguém te conta que...")
+- fase_sugerida: "awareness" se a conta está crescendo mas conversões baixas; "consideracao" se engajamento alto mas poucas vendas; "conversao" se a audiência já confia na marca; null se não há evidência clara
+- Retorne somente o JSON, sem markdown.`;
+
+  try {
+    const result = await model.generateContent({
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: { responseMimeType: 'application/json' },
+    });
+    return JSON.parse(result.response.text());
+  } catch (error) {
+    console.error('Erro ao extrair insights narrativos:', error);
+    return { ganchos_sugeridos: [], fase_sugerida: null, justificativa_fase: '' };
+  }
+}
+
+/**
  * Retorna O MAIS RECENTE relatório de performance salvo no DB na nuvem.
  */
 export async function getCurrentIntel() {

@@ -229,6 +229,9 @@ export function usePipeline({ onAgentComplete } = {}) {
 
       if (abortRef.current) return;
 
+      // Persiste na ref para que o Diretor Visual leia sem stale closure
+      rawOutputsRef.current = { ...rawOutputsRef.current, roteiro: finalRoteiro };
+
       const parsed = {
         cenas: parseCenas(finalRoteiro),
         tts: parseTTS(finalRoteiro),
@@ -332,7 +335,8 @@ export function usePipeline({ onAgentComplete } = {}) {
       addTemaCoberto(
         inputs.tema,
         inputs.formato || 'Shorts',
-        new Date().toISOString().slice(0, 10)
+        new Date().toISOString().slice(0, 10),
+        inputs.objetivo || 'crescimento'
       ).catch(() => {});
 
       updateState({
