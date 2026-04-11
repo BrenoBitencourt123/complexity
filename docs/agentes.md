@@ -1,253 +1,163 @@
-# Agentes do Pipeline
+# Agentes
 
-> Cada agente, o que faz, seus inputs, outputs e modelo utilizado.
+> Os 4 agentes do pipeline + QA. Inputs, outputs, modelos e parsers.
 
-Ver também: [[CLAUDE]] · [[fluxo-estado]] · [[arquitetura]]
-
----
-
-## Visão Geral
-
-O Atlas Agency opera com **4 agentes sequenciais**, cada um especializado em uma fase da produção de conteúdo. Os agentes se comunicam passando seus outputs como input do próximo.
-
-```
-┌──────────────┐    ┌──────────────┐    ┌──────────────┐    ┌──────────────┐
-│ 🎯           │    │ ✍️           │    │ 🎨           │    │ 📡           │
-│ ESTRATEGISTA │───▶│  ROTEIRISTA  │───▶│DIRETOR VISUAL│───▶│ DISTRIBUIDOR │
-│  (Pro)       │    │   (Pro)      │    │  (Flash)     │    │  (Flash)     │
-└──────────────┘    └──────────────┘    └──────────────┘    └──────────────┘
-```
-
-Cada agente passa por um ciclo de **review humano**: o resultado é exibido, e o usuário pode **Aprovar** (avançar) ou **Regenerar** (rodar novamente).
+Ver também: [[pipeline]] · [[voz-do-atlas]] · [[estilos-visuais]]
 
 ---
 
-## Agente 1 — Estrategista 🎯
+## Modelo Usado
 
-**Arquivo:** `src/services/prompts.js` → `promptEstrategista()`  
-**Modelo:** `gemini-1.5-pro`  
-**Temperature:** `0.7`
+Todos os agentes usam **Gemini 2.5 Flash** (`gemini-2.5-flash`).
 
-### Papel
+---
 
-Analista de contexto e tomador de decisões de conteúdo. Define a estratégia completa de um vídeo curto, analisando o tema, o momento (dias até o ENEM), e decidindo o melhor ângulo viral.
+## Agente 1 — Estrategista
+
+**Arquivo:** `prompts.js` → `promptEstrategista()`
+
+Analista de contexto. Define a estratégia completa antes de qualquer linha de roteiro ser escrita.
 
 ### Inputs
+- `tema` — obrigatório (vem do StartForm ou do plano semanal)
+- `objetivo` — crescimento / retencao / conversao
+- `formato` — Shorts / Carrossel / Stories
+- `contextoExtra` — instrução extra do CMO
+- `narrativaContexto` — contexto completo da memória narrativa (fase, ciclo, arcos, ganchos)
+- Data atual + dias até o ENEM (automático)
 
-| Campo           | Origem                  | Obrigatório |
-| --------------- | ----------------------- | ----------- |
-| `tema`          | Formulário (StartForm)  | ✅           |
-| `objetivo`      | Formulário              | ❌           |
-| `contextoExtra` | Formulário              | ❌           |
-| `dataAtual`     | Gerado automaticamente  | ✅           |
-| Contexto ENEM   | `utils/enem.js`         | ✅ (auto)    |
-| Dados da marca  | `utils/constants.js`    | ✅ (auto)    |
-
-### Output (formato YAML)
-
+### Output (YAML)
 ```yaml
 ESTRATEGIA:
-  tema: "título definido"
-  angulo: "o que diferencia este vídeo"
-  objetivo: "crescimento | conversao | retencao | awareness"
-  duracao_alvo: "15-30s | 30-60s | 60-90s"
-  duracao_segundos: 45
-  estilo_visual: "SKETCH | PINTURA"
-  justificativa: "2-3 frases"
-  cenas_estimadas: 5
-  hook_sugerido: "frase de hook"
-  cta_sugerido: "call to action"
+  tema: "título"
+  formato_imposto: "Shorts"
+  angulo: "ângulo específico"
+  objetivo: "crescimento"
+  duracao_alvo: "30-60s"
+  cenas_estimadas: 12
+  estilo_visual: "padrao | sketch | impacto | pintura"
+  justificativa: "..."
+  hook_sugerido: "..."
+  cta_sugerido: "..."
 ```
 
 ### Parser
-
-`parser.js` → `parseEstrategia()` — Extrai campos com regex simples campo-por-campo.
-
-### Decisões de Design dos Estilos Visuais
-
-| Estilo   | Quando Usar                                         |
-| -------- | --------------------------------------------------- |
-| SKETCH   | Conteúdo explicativo, matemático, científico        |
-| PINTURA  | Conteúdo emocional, motivacional, histórico         |
+`parseEstrategia()` — extrai campos com regex campo por campo.
 
 ---
 
-## Agente 2 — Roteirista ✍️
+## Agente 2 — Roteirista + QA
 
-**Arquivo:** `src/services/prompts.js` → `promptRoteirista()`  
-**Modelo:** `gemini-1.5-pro`  
-**Temperature:** `0.8`
+**Arquivo:** `prompts.js` → `promptRoteirista()` + `promptRevisor()`
 
-### Papel
-
-Escritor de roteiros de vídeo curto educativo. Especializado em hooks que param o scroll, narração natural (como fala, não como texto), e ritmo adequado para vídeo curto.
+Escreve na **voz do Atlas** — professor particular que fala diretamente com o aluno. Ver [[voz-do-atlas]].
 
 ### Inputs
+- Output bruto do Estrategista (YAML completo)
 
-| Campo        | Origem                          |
-| ------------ | ------------------------------- |
-| `estrategia` | Output bruto do Agente 1        |
-
-### Output (formato estruturado)
-
-Cada cena segue este formato:
-
+### Output por cena
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CENA [XX] | [NOME DA CENA] | [DURAÇÃO]s
+CENA 01 | HOOK | 2s
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
 NARRAÇÃO:
-"texto exato para narração em voz alta"
+"texto falado — máx 1-2 frases"
 
 TEXTO NA TELA:
-palavra-chave ou frase curta
+2-5 palavras de impacto
 
-EMOÇÃO / ENERGIA:
-como o narrador deve soar
-
-DURAÇÃO: Xs
+DURAÇÃO: 2s
+---
 ```
 
-Ao final, inclui:
-- **Script TTS**: texto de narração completo, formatado para ElevenLabs
-- **Duração total estimada** e **total de cenas**
+Ao final: `ROTEIRO COMPLETO PARA TTS` + `DURAÇÃO TOTAL ESTIMADA`.
+
+### Regra de Corte Inteligente
+Corta para nova cena quando a **imagem mental muda**, não no relógio.
+- Maioria das cenas: 2-4s
+- Cenas de explicação densa: até 6s
+- Target: 10-15 cenas para 30-45s / 15-20 cenas para 45-60s
+
+### QA Invisível
+Após gerar o roteiro, o Revisor QA verifica:
+1. Fugiu do tema? → reescreve
+2. Vendeu quando deveria crescer? → remove CTA
+3. Hook fraco? → reformula
+
+Retorna JSON: `{ status, nota, motivo, roteiro_final }`
 
 ### Parsers
-
-- `parseCenas()` — Extrai array de cenas (número, nome, narração, textoNaTela, emoção, duração)
-- `parseTTS()` — Extrai o script TTS limpo
-- `parseMetaRoteiro()` — Extrai duração total e número de cenas
-
-### Estrutura Obrigatória
-
-```
-CENA 01 — HOOK       (2–4s)
-CENA 02 — PROBLEMA   (3–6s)
-CENA 03..N-1 — DESENVOLVIMENTO
-CENA  N — CTA        (3–5s)
-```
+- `parseCenas()` — array de cenas por regex (robusto, não depende de separador)
+- `parseTTS()` — script limpo para ElevenLabs
+- `parseMetaRoteiro()` — duração total e número de cenas
 
 ---
 
-## Agente 3 — Diretor Visual 🎨
+## Agente 3 — Diretor Visual
 
-**Arquivo:** `src/services/prompts.js` → `promptDiretorVisual()`  
-**Modelo:** `gemini-1.5-flash`  
-**Temperature:** `0.8`
+**Arquivo:** `prompts.js` → `promptDiretorVisual()`
 
-### Papel
-
-Diretor de arte que gera prompts de imagem para IA generativa. Cada cena recebe duas versões de prompt (A e B) com especificações detalhadas.
+Gera descrição visual em PT-BR para cada cena. O estilo e câmera são injetados em código pelo `buildImagePrompt.js`.
 
 ### Inputs
+- Output bruto do Roteirista
 
-| Campo        | Origem                          |
-| ------------ | ------------------------------- |
-| `estrategia` | Output bruto do Agente 1        |
-| `roteiro`    | Output bruto do Agente 2        |
+### Output por cena
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+VISUAL — CENA 01 | HOOK
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DESCRIÇÃO: o que o espectador vê em 1 frase
+IMAGEM_PT: 2-4 frases descrevendo sujeito, ação, elementos e contexto
+NARRACAO: cópia exata da narração desta cena
+TEXTO: "1-4 palavras visíveis na imagem"
+```
 
-### Output
+Ao final: `GUIA DE CONSISTÊNCIA VISUAL` com personagem recorrente e elementos.
 
-Para cada cena:
+### buildImagePrompt
+O `buildImagePrompt.js` recebe `IMAGEM_PT` e adiciona:
+- Estilo seed completo (padrao/sketch/impacto/pintura)
+- Enquadramento de câmera por posição (opening/middle/closing/final)
+- Dica visual automática baseada na narração
+- Regras fixas de composição, texto, fundo e proporção
 
-**Opção A — Geração Automática (API):**
-- Estilo Mestre (bloco completo)
-- Cena (descrição visual em inglês)
-- Enquadramento + justificativa
-- Dica Visual, Composição
-- Texto na Imagem (máx 4 palavras PT-BR)
-- Fundo, Proporção (9:16)
-- Prompt Negativo
-- Modelo sugerido (flux-dev / ideogram-v2 / dalle-3)
-- Seed
-
-**Opção B — Prompt Manual (Ideogram / Midjourney / Canva AI):**
-- Versão simplificada em português
-- Referência de mood
-- Lista de elementos a evitar
-
-**Ao final:** Guia de Consistência Visual (paleta, personagens recorrentes, seed global)
+Ver detalhes em [[estilos-visuais]].
 
 ### Parsers
-
-- `parseVisuais()` — Array de visuais por cena (número, nome, descrição, opcaoA, opcaoB)
-- `parseConsistencia()` — Guia de consistência visual
-
-### Blocos Mestres
-
-Os blocos mestres de estilo são definidos em `utils/constants.js` → `ESTILOS_VISUAIS`:
-
-- **SKETCH:** "Ilustração de traço azul sobre papel branco, estilo caderno de estudante..."
-- **PINTURA:** "Pintura digital texturizada, estilo arte conceitual de mesa digitalizadora..."
-
-Cada estilo inclui: `blocoMestre`, `blocoMestreSimplificado` e `promptNegativo`.
+- `parseVisuais()` — array com `imagePrompt` (IMAGEM_PT) + `opcaoA` (prompt final montado)
+- `parseConsistencia()` — guia de consistência visual
 
 ---
 
-## Agente 4 — Distribuidor 📡
+## Agente 4 — Distribuidor
 
-**Arquivo:** `src/services/prompts.js` → `promptDistribuidor()`  
-**Modelo:** `gemini-1.5-flash`  
-**Temperature:** `0.8`
+**Arquivo:** `prompts.js` → `promptDistribuidor()`
 
-### Papel
-
-Especialista em crescimento orgânico de canais educativos. Gera o pacote completo de metadados para distribuição em múltiplas plataformas.
+Gera pacote completo de metadados para publicação em 3 plataformas.
 
 ### Inputs
-
-| Campo        | Origem                          |
-| ------------ | ------------------------------- |
-| `estrategia` | Output bruto do Agente 1        |
-| `roteiro`    | Output bruto do Agente 2        |
+- Output bruto do Estrategista
+- Output bruto do Roteirista
 
 ### Output
 
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PACOTE DE DISTRIBUIÇÃO
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
-| Plataforma       | Campos                                    |
-| ---------------- | ----------------------------------------- |
-| **TikTok**       | Título (100 chars), Descrição, Hashtags (20-25) |
-| **Instagram Reels** | Legenda (2.200 chars), Hashtags (25-30)  |
-| **YouTube Shorts**  | Título (70 chars), Descrição, Tags (15-20) |
-| **Geral**        | Horários por plataforma, Thumbnail, Aviso de tendência |
+| Plataforma | Campos |
+|---|---|
+| TikTok | Título (100 chars), Descrição, Hashtags (20-25) |
+| Instagram Reels | Legenda completa (2.200 chars), Hashtags (30) |
+| YouTube Shorts | Título (100 chars), Descrição (250 chars), Tags (15-20) |
+| Geral | Melhor horário, Thumbnail sugerida, Aviso de tendência |
 
 ### Parser
-
-- `parseDistribuicao()` — Objeto com chaves `tiktok`, `instagram`, `youtube`, `geral`, cada uma com seus subcampos.
-
----
-
-## Tabela Resumo
-
-| #  | Agente          | Modelo           | Temp | Input Principal                | Output Principal                  |
-| -- | --------------- | ---------------- | ---- | ------------------------------ | --------------------------------- |
-| 1  | Estrategista    | gemini-1.5-pro   | 0.7  | tema, objetivo, contexto       | Estratégia YAML                   |
-| 2  | Roteirista      | gemini-1.5-pro   | 0.8  | estratégia (raw)               | Cenas + Script TTS                |
-| 3  | Diretor Visual  | gemini-1.5-flash | 0.8  | estratégia + roteiro (raw)     | Prompts de imagem A/B + guia      |
-| 4  | Distribuidor    | gemini-1.5-flash | 0.8  | estratégia + roteiro (raw)     | Pacote TikTok/IG/YT               |
+`parseDistribuicao()` — objeto com chaves `tiktok`, `instagram`, `youtube`, `geral`.
 
 ---
 
-## Configurações de Geração (compartilhadas)
+## Formatos Suportados
 
-```js
-{
-  topP: 0.95,
-  topK: 40,
-  maxOutputTokens: 8192,
-}
-```
-
-## Dados da Marca Injetados
-
-Todos os system prompts recebem automaticamente:
-- Nome da marca, descrição, público-alvo
-- Tom de voz, diferenciais
-- Preço PRO (R$49,90/mês)
-- Contexto ENEM (dias restantes, urgência)
+| Formato | Estrutura do roteiro | Proporção da imagem |
+|---|---|---|
+| Shorts | CENA XX | NOME | DURAÇÃOs | 9:16 vertical (1080x1920px) |
+| Carrossel | LÂMINA XX | NOME | 1:1 ou 4:5 |
+| Stories | TELA XX | NOME | 9:16 vertical |

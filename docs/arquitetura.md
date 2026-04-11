@@ -1,166 +1,93 @@
-# Arquitetura do Projeto
+# Arquitetura
 
-> Estrutura de pastas, responsabilidades de cada camada e decisões técnicas.
+> Estrutura de pastas, responsabilidades de cada camada e stack técnica.
 
-Ver também: [[CLAUDE]] · [[agentes]] · [[fluxo-estado]] · [[decisoes]]
+Ver também: [[Home]] · [[pipeline]] · [[agentes]] · [[banco-de-dados]]
 
 ---
 
 ## Estrutura de Pastas
 
 ```
-Complexity/
-├── index.html                  # Ponto de entrada HTML (pt-BR, meta SEO)
-├── vite.config.js              # Configuração Vite (plugin React)
-├── package.json                # Dependências (React 19, Gemini SDK, Vite 8)
+src/
+├── App.jsx                        # Raiz: orquestra pipeline, views e navegação
 │
-├── src/
-│   ├── main.jsx                # Bootstrap React (StrictMode → <App />)
-│   ├── App.jsx                 # Componente raiz — orquestra pipeline, views e settings
-│   ├── App.css                 # Estilos do layout principal e settings
-│   ├── index.css               # Design System global (tokens, reset, animações)
+├── components/
+│   ├── Agents/
+│   │   ├── StartForm.jsx          # Formulário: tema, objetivo, formato, contexto
+│   │   └── AgentViews.jsx         # Views de cada agente (Estrategista, Roteirista, etc.)
 │   │
-│   ├── components/
-│   │   ├── Agents/
-│   │   │   ├── StartForm.jsx   # Formulário de input (tema, objetivo, contexto)
-│   │   │   ├── StartForm.css
-│   │   │   ├── AgentViews.jsx  # Views de cada agente (loading, error, resultado)
-│   │   │   └── AgentViews.css
-│   │   │
-│   │   ├── Layout/
-│   │   │   ├── Sidebar.jsx     # Sidebar com navegação, histórico e countdown ENEM
-│   │   │   └── Sidebar.css
-│   │   │
-│   │   ├── Pipeline/
-│   │   │   ├── PipelineTracker.jsx  # Barra visual de progresso dos 4 agentes
-│   │   │   └── PipelineTracker.css
-│   │   │
-│   │   ├── Production/
-│   │   │   └── PacoteFinal.jsx # Tela final com TTS, checklist e export .md
-│   │   │
-│   │   └── UI/
-│   │       ├── index.jsx       # Componentes base (Button, Card, Badge, Tabs, Modal, etc.)
-│   │       └── UI.css
+│   ├── Intelligence/
+│   │   ├── DataIntelPanel.jsx     # Painel: análise de performance + memória narrativa
+│   │   └── DataIntelPanel.css
 │   │
-│   ├── hooks/
-│   │   ├── usePipeline.js      # State machine do pipeline (core do app)
-│   │   ├── useHistory.js       # CRUD de produções no localStorage
-│   │   └── useSettings.js      # API key e preferências persistidas
-│   │
-│   ├── services/
-│   │   ├── gemini.js           # Client Gemini (init, runAgent com streaming, testConnection)
-│   │   ├── prompts.js          # System prompts dos 4 agentes (parametrizados)
-│   │   └── parser.js           # Parsers regex dos outputs de cada agente
-│   │
-│   └── utils/
-│       ├── constants.js        # Configurações da marca, estilos visuais, constantes
-│       ├── enem.js             # Cálculo dinâmico de dias até o ENEM
-│       └── formatters.js       # Formatação de datas, clipboard, export .md, IDs
+│   ├── WeeklyPlanner/             # Calendário semanal gerado pelo CMO
+│   ├── Production/                # Tela final: TTS, prompts de imagem, pacote
+│   ├── Layout/                    # Sidebar com navegação e countdown ENEM
+│   └── UI/                        # Design system (Button, Card, Badge, etc.)
 │
-├── examples/node/              # (Vazio — espaço para exemplos futuros)
-└── docs/                       # Documentação do projeto (este diretório)
+├── hooks/
+│   ├── usePipeline.js             # State machine dos 4 agentes (core do app)
+│   ├── useNarrativeMemory.js      # CRUD da memória narrativa via Supabase
+│   ├── useHistory.js              # Histórico de produções
+│   └── useSettings.js             # API keys e preferências
+│
+├── services/
+│   ├── gemini.js                  # Client Gemini (init, runAgent, streaming)
+│   ├── prompts.js                 # System prompts dos 4 agentes + QA + Distribuidor
+│   ├── parser.js                  # Parsers regex dos outputs de cada agente
+│   ├── contentPlanner.js          # CMO Estratégico: gera plano semanal 7 dias
+│   ├── narrativeMemory.js         # CRUD da memória narrativa no Supabase
+│   └── dataAnalyst.js             # Agente Cientista: analisa performance, extrai insights
+│
+└── utils/
+    ├── constants.js               # Marca Atlas, estilos visuais, objetivos, formatos
+    ├── buildImagePrompt.js        # Monta prompt final de imagem (estilo + câmera + regras)
+    └── enem.js                    # Cálculo dinâmico de dias até o ENEM
 ```
 
 ---
 
-## Camadas da Arquitetura
+## Camadas
 
-### 1. Apresentação (`components/`)
+### Apresentação (`components/`)
+Componentes React sem lógica de negócio. Recebem dados via props, disparam callbacks.
 
-Componentes React puros, sem lógica de negócio. Divididos por domínio:
+### Estado (`hooks/`)
+Toda a lógica de estado encapsulada em custom hooks. O `usePipeline` é a state machine central que orquestra os 4 agentes em sequência.
 
-| Pasta        | Responsabilidade                                            |
-| ------------ | ----------------------------------------------------------- |
-| `Agents/`    | Formulário de entrada + views de resultado de cada agente   |
-| `Layout/`    | Sidebar com navegação, histórico e countdown do ENEM        |
-| `Pipeline/`  | Barra de progresso visual conectada ao status da pipeline   |
-| `Production/`| Tela final com script TTS, checklist e export               |
-| `UI/`        | Design system: Button, Card, Badge, Tabs, Modal, CopyBlock |
+### Serviços (`services/`)
+Integrações com APIs externas (Gemini, Supabase) e processamento de texto. Funções assíncronas puras, sem estado próprio.
 
-### 2. Estado (`hooks/`)
-
-Custom hooks que encapsulam toda a lógica de estado:
-
-| Hook           | Papel                                              |
-| -------------- | -------------------------------------------------- |
-| `usePipeline`  | State machine completa → ver [[fluxo-estado]]      |
-| `useHistory`   | CRUD de produções com localStorage                  |
-| `useSettings`  | Persistência da API key + inicialização do Gemini  |
-
-### 3. Serviços (`services/`)
-
-Camada de integração com APIs externas e processamento:
-
-| Serviço     | Papel                                                    |
-| ----------- | -------------------------------------------------------- |
-| `gemini.js` | Abstração do SDK `@google/generative-ai` com streaming   |
-| `prompts.js`| System prompts parametrizados dos 4 agentes              |
-| `parser.js` | Parsers regex que extraem dados estruturados dos outputs  |
-
-### 4. Utilitários (`utils/`)
-
-Funções puras sem side effects:
-
-| Módulo         | Papel                                        |
-| -------------- | -------------------------------------------- |
-| `constants.js` | Definições da marca Atlas, estilos, objetivos |
-| `enem.js`      | Cálculo dinâmico de dias até o próximo ENEM  |
-| `formatters.js`| Formatação de datas, clipboard, export .md    |
+### Utilitários (`utils/`)
+Funções puras sem side effects. `buildImagePrompt` é o mais importante: monta o prompt de imagem completo em código, sem depender do LLM para estilo.
 
 ---
 
-## Design System
+## Stack Técnica
 
-Definido em `index.css` com CSS custom properties:
-
-- **Paleta:** Dark mode com tons de azul/índigo (`#06060b` → `#3b82f6`)
-- **Tipografia:** Inter (Google Fonts), escala de `0.75rem` a `2.5rem`
-- **Glassmorphism:** Superfícies com `backdrop-filter: blur(12px)` e borders translúcidos
-- **Animações:** `fadeIn`, `fadeInUp`, `shimmer`, `glow`, `spin`, `typing`, `gradientFlow`
-- **Grid decorativo:** Background sutil com linhas 40×40px
-- **Componentes base:** Button (4 variantes), Card, Badge (5 cores), Tabs, CopyBlock, Modal
-
----
-
-## Fluxo de Dados
-
-```
-[StartForm] → tema, objetivo, contextoExtra
-     ↓
-[usePipeline.iniciar()] → dispara agente 1
-     ↓
-[gemini.runAgent()] → streaming chunks → callback no hook
-     ↓
-[parser.parseXxx()] → dados estruturados
-     ↓
-[AgentViews] → renderiza com botões Aprovar/Regenerar
-     ↓ (aprovar)
-[usePipeline.aprovarStep()] → dispara próximo agente
-     ↓ ... (repete 4x)
-[PacoteFinal] → TTS, checklist, export .md
-```
-
----
-
-## Integração com Gemini
-
-- **SDK:** `@google/generative-ai` v0.24.1
-- **Modelos:**
-  - `gemini-1.5-pro` → Estrategista e Roteirista (raciocínio estratégico)
-  - `gemini-1.5-flash` → Diretor Visual e Distribuidor (mais rápido, mecânico)
-- **Streaming:** Todos os agentes usam `generateContentStream` com callback por chunk
-- **Temperature:** 0.7 (Estrategista) / 0.8 (demais)
-- **Max tokens:** 8192 por agente
+| Tecnologia | Uso |
+|---|---|
+| React + Vite | Frontend SPA |
+| JavaScript (sem TypeScript) | Linguagem |
+| CSS nativo | Estilização (sem Tailwind) |
+| Google Gemini 2.5 Flash | Todos os agentes LLM |
+| Supabase (PostgreSQL) | Banco de dados, persistência |
+| ElevenLabs | Geração de áudio (narrador Thiago) |
+| `@google/generative-ai` | SDK Gemini |
 
 ---
 
 ## Persistência
 
-Tudo no `localStorage` do browser:
+Dois destinos:
 
-| Chave                    | Conteúdo                   |
-| ------------------------ | -------------------------- |
-| `atlas-agency-settings`  | API key, voz ElevenLabs    |
-| `atlas-agency-history`   | Array de produções passadas|
+| Dado | Onde |
+|---|---|
+| Produções passadas | Supabase (`productions`) |
+| Plano semanal | Supabase (`content_plans`) |
+| Memória narrativa | Supabase (`narrative_memory`) |
+| Inteligência de performance | Supabase (`brand_intel`) |
+| API keys / settings | localStorage |
 
-Não há backend. O app roda 100% client-side.
+Ver detalhes em [[banco-de-dados]].
