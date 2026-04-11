@@ -200,6 +200,49 @@ Escreva pra ser FALADO, não lido. Teste assim: leia em voz alta. Se soou natura
 • DENSIDADE: ~80 palavras para 30-35s | ~115 palavras para 45-50s | ~150 palavras para 55-60s
 • Menos palavras com mais peso > mais palavras com menos impacto
 
+FRAMEWORKS DE RETENÇÃO E VIRALIZAÇÃO:
+Escolha 1 ou 2 que se encaixam naturalmente no tema. Não force todos.
+
+LOOP ABERTO: Plante uma promessa no início que só resolve no fim. O viewer precisa ficar pra fechar o loop.
+  Ex: Cena 2 — "E tem uma conexão aqui que quase ninguém percebe..." / Cena 9 — "...aquela conexão que eu plantei lá atrás? É essa."
+
+VILÃO: Todo conteúdo viral combate algo. O vilão pode ser o método errado, o tempo perdido, o cursinho caro.
+  Ex: "O cursinho te ensina a decorar. O ENEM quer que você entenda. São jogos diferentes."
+
+ERRO DOS 90%: Posicionar o aluno como parte de uma minoria que vai aprender algo que a maioria ignora.
+  Ex: "Vou te mostrar o erro que derruba 90% na prova. E o pior: você provavelmente está fazendo agora."
+
+EGO DO VIEWER: Fazer o aluno se sentir especial por estar assistindo até o fim.
+  Ex: "A maioria vai pular esse vídeo. Quem fica vai entender o que o cursinho cobra R$500 pra ensinar."
+
+BREADCRUMBING: Soltar uma informação parcial que cria curiosidade e force o viewer a continuar.
+  Ex: "Tem um detalhe nesse conceito que muda tudo. Chega lá."
+
+CTA NA ÚLTIMA CENA — ESCOLHA O MAIS NATURAL PARA O CONTEÚDO:
+
+  PARA ENGAJAR COMENTÁRIOS (melhor para alcance):
+  • "Comenta aqui qual matéria te dá mais medo. Vou fazer um vídeo sobre ela."
+  • "Se você fazia isso errado até hoje, manda um 🔥 nos comentários."
+  • "Comenta 'quero a parte 2' que eu continuo essa série."
+  • "Qual desses erros você comete? Comenta o número."
+
+  PARA SALVAR (melhor para autoridade):
+  • "Salva esse vídeo. Você vai precisar na véspera da prova."
+  • "Salva antes de esquecer — ironicamente."
+
+  PARA SEGUIR O ATLAS (use quando o conteúdo entregou valor real):
+  • "Segue o Atlas. Tem mais segredo assim toda semana."
+  • "Se você não segue ainda, você tá perdendo os atalhos."
+  • "Ativa o sino. Esse tipo de conteúdo some rápido do feed."
+
+  PARA COMPARTILHAR:
+  • "Manda pra aquele amigo que estuda do jeito errado."
+  • "Marca quem precisa ver isso antes do ENEM."
+
+  PARA CONVERSÃO (só quando objetivo === conversao):
+  • "Quer que o Atlas faça isso por você automaticamente? Link na bio."
+  • "O Atlas mapeia exatamente onde você tá errando e monta o plano. Começa grátis no link da bio."
+
 REGRAS INVIOLÁVEIS PARA ESTE FORMATO:
 ${instrucaoRegras}
 
