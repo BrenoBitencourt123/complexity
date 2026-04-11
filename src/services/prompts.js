@@ -200,6 +200,23 @@ Escreva pra ser FALADO, não lido. Teste assim: leia em voz alta. Se soou natura
 • DENSIDADE: ~80 palavras para 30-35s | ~115 palavras para 45-50s | ~150 palavras para 55-60s
 • Menos palavras com mais peso > mais palavras com menos impacto
 
+TÉCNICA DE PUNCHES (micro-resets de atenção):
+A cada bloco de explicação densa, quebre com uma frase curtíssima — de 1 a 4 palavras.
+Isso reseta o cérebro do viewer e cria o momento dramático que o locutor entrega com pausa.
+
+Exemplos de punches após explicação:
+  Explicação: "A banca não está lendo literatura. Ela avalia raciocínio."
+  Punch: "Errado." / "Esquece." / "Não é assim."
+
+  Explicação: "Seus parágrafos precisam se conectar em cadeia."
+  Punch: "Temos um problema." / "Simples assim." / "É isso."
+
+  Explicação longa sobre um conceito...
+  Punch: "Chocante, né?" / "Ninguém te contou." / "Agora você sabe."
+
+Regra: use 2 a 4 punches por roteiro. Um por bloco de desenvolvimento.
+Nunca use punch no hook nem no CTA — só no meio, onde a atenção cai.
+
 FRAMEWORKS DE RETENÇÃO E VIRALIZAÇÃO:
 Escolha 1 ou 2 que se encaixam naturalmente no tema. Não force todos.
 
