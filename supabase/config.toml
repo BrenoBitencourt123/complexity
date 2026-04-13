@@ -1,0 +1,5 @@
+[functions.social-oauth-callback]
+verify_jwt = false
+
+[functions.social-metrics]
+verify_jwt = false

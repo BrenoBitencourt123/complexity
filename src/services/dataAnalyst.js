@@ -106,6 +106,62 @@ Regras:
 }
 
 /**
+ * Extrai métricas de conta (seguidores, engajamento, views) de um CSV exportado
+ * de TikTok, Instagram ou YouTube usando Gemini como parser inteligente.
+ * Retorna objeto com os campos extraídos ou null em caso de falha.
+ */
+export async function extractAccountMetrics(rawData, platform) {
+  const genAI = getGenAI();
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
+  const prompt = `Você é um extrator de dados de performance. Analise este export do ${platform} e extraia APENAS as métricas de CONTA (não de vídeo individual).
+
+Retorne um JSON com exatamente estes campos (use null para o que não encontrar ou calcular):
+{
+  "seguidores": number,
+  "crescimento_semanal": number,
+  "taxa_engajamento": number,
+  "views_7d": number,
+  "melhor_horario": string | null,
+  "impressoes_7d": number | null,
+  "alcance_7d": number | null
+}
+
+Definições:
+- seguidores: total de seguidores/inscritos no fim do período
+- crescimento_semanal: % de crescimento nos últimos 7 dias — calcule ((ultimo - primeiro) / primeiro) × 100 se tiver série diária
+- taxa_engajamento: % médio de engajamento = (likes + comentários + shares) / views × 100, use média dos vídeos do período
+- views_7d: total de reproduções/views nos últimos 7 dias
+- melhor_horario: faixa de horário com maior engajamento se disponível (ex: "19h-21h")
+
+REGRAS:
+- Retorne SOMENTE o JSON puro, sem markdown, sem explicações
+- Se não conseguir calcular, use null — nunca invente dados
+- Arredonde floats para 1 casa decimal
+
+DADOS DO ${platform.toUpperCase()}:
+${rawData.slice(0, 8000)}`;
+
+  try {
+    const result = await model.generateContent({
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: { responseMimeType: 'application/json' },
+    });
+    return JSON.parse(result.response.text());
+  } catch {
+    // fallback: tenta extrair JSON sem responseMimeType
+    try {
+      const result = await model.generateContent(prompt);
+      const text = result.response.text().trim();
+      const match = text.match(/\{[\s\S]*\}/);
+      return match ? JSON.parse(match[0]) : null;
+    } catch {
+      return null;
+    }
+  }
+}
+
+/**
  * Retorna O MAIS RECENTE relatório de performance salvo no DB na nuvem.
  */
 export async function getCurrentIntel() {

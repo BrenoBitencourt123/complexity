@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Button } from '../UI/index.jsx';
-import { analyzePerformanceData, getCurrentIntel, extractNarrativeInsights } from '../../services/dataAnalyst.js';
+import { analyzePerformanceData, getCurrentIntel, extractNarrativeInsights, extractAccountMetrics } from '../../services/dataAnalyst.js';
 import { useNarrativeMemory } from '../../hooks/useNarrativeMemory.js';
-import { updateMemory } from '../../services/narrativeMemory.js';
+import { updateMemory, getMemory, salvarHistoricoMetricas } from '../../services/narrativeMemory.js';
+import { iniciarOAuthYouTube, buscarMetricas, getPlataformasConectadas, desconectarPlataforma } from '../../services/socialMetrics.js';
 import './DataIntelPanel.css';
 
 const FASES = [
@@ -40,6 +41,15 @@ export default function DataIntelPanel({ onBack }) {
   const [metricasForm, setMetricasForm] = useState({ seguidores: '', crescimento_semanal: '', taxa_engajamento: '' });
   const [salvandoMetricas, setSalvandoMetricas] = useState(false);
 
+  // Extração automática de métricas via CSV
+  const [plataformaSelecionada, setPlataformaSelecionada] = useState('tiktok');
+  const [metricasDetectadas, setMetricasDetectadas] = useState(null);
+
+  // Conexões OAuth com plataformas
+  const [plataformasConectadas, setPlataformasConectadas] = useState([]);
+  const [buscandoMetricasApi, setBuscandoMetricasApi] = useState(false);
+  const [oauthFeedback, setOauthFeedback] = useState(null); // { tipo: 'sucesso'|'erro', mensagem }
+
   const {
     memory, loading: loadingMemory,
     updateFase, addProibido, resetMemory,
@@ -55,17 +65,83 @@ export default function DataIntelPanel({ onBack }) {
     loadIntel();
   }, []);
 
-  // ─── Análise de performance + extração de insights ───
+  // Carrega quais plataformas estão conectadas e detecta retorno de OAuth
+  useEffect(() => {
+    async function inicializar() {
+      // Verifica retorno do OAuth (parâmetros na URL)
+      const params = new URLSearchParams(window.location.search);
+      const sucesso = params.get('oauth_success');
+      const erroOauth = params.get('oauth_error');
+
+      if (sucesso) {
+        setOauthFeedback({ tipo: 'sucesso', mensagem: `${sucesso} conectado com sucesso!` });
+        window.history.replaceState({}, '', window.location.pathname);
+      } else if (erroOauth) {
+        setOauthFeedback({ tipo: 'erro', mensagem: `Falha na conexão: ${erroOauth}` });
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+
+      // Carrega status das conexões
+      const conectadas = await getPlataformasConectadas();
+      setPlataformasConectadas(conectadas);
+    }
+    inicializar();
+  }, []);
+
+  // Busca métricas via API para uma plataforma conectada
+  const handleBuscarMetricasApi = async (platform) => {
+    setBuscandoMetricasApi(true);
+    try {
+      const resultado = await buscarMetricas(platform);
+if (!resultado.conectado) {
+        setOauthFeedback({ tipo: 'erro', mensagem: 'Token expirado. Reconecte a conta.' });
+        return;
+      }
+      // Trata como "métricas detectadas" para confirmação antes de salvar
+      setMetricasDetectadas({
+        plataforma: platform,
+        seguidores: resultado.inscritos ?? resultado.seguidores,
+        crescimento_semanal: resultado.crescimento_semanal,
+        taxa_engajamento: resultado.taxa_engajamento,
+        views_7d: resultado.views_7d,
+        melhor_horario: null,
+        _canal_nome: resultado.canal_nome,
+      });
+    } catch (err) {
+      setOauthFeedback({ tipo: 'erro', mensagem: err.message });
+    } finally {
+      setBuscandoMetricasApi(false);
+    }
+  };
+
+  const handleDesconectar = async (platform) => {
+    if (!window.confirm(`Desconectar ${platform}?`)) return;
+    await desconectarPlataforma(platform);
+    setPlataformasConectadas(prev => prev.filter(p => p.platform !== platform));
+  };
+
+  // ─── Análise de performance + extração de insights + extração de métricas ───
   const handleAnalyze = async () => {
     if (!rawData.trim()) return;
     setIsAnalyzing(true);
     setError(null);
     setInsights(null);
     setGanchosAdicionados([]);
+    setMetricasDetectadas(null);
     try {
-      const result = await analyzePerformanceData(rawData);
+      // Roda análise de conteúdo e extração de métricas em paralelo
+      const [result, metricas] = await Promise.all([
+        analyzePerformanceData(rawData),
+        extractAccountMetrics(rawData, plataformaSelecionada),
+      ]);
       setIntel(result);
       setRawData('');
+
+      // Mostra métricas detectadas se Gemini extraiu algo útil
+      if (metricas && (metricas.seguidores || metricas.taxa_engajamento)) {
+        setMetricasDetectadas({ ...metricas, plataforma: plataformaSelecionada });
+      }
+
       // Extrai sugestões narrativas em paralelo (não bloqueia)
       extractNarrativeInsights(result)
         .then(sugestoes => setInsights(sugestoes))
@@ -137,6 +213,35 @@ export default function DataIntelPanel({ onBack }) {
     setSalvandoMetricas(false);
   };
 
+  // ─── Confirma e salva métricas extraídas automaticamente ───
+  const handleConfirmarMetricas = async (novas) => {
+    setSalvandoMetricas(true);
+    const mem = await getMemory();
+    const contaAtual = mem?.metricas_conta || {};
+
+    const updatedConta = {
+      ...contaAtual,
+      [novas.plataforma]: novas,
+      atualizado_em: new Date().toISOString(),
+    };
+
+    // Recalcula agregados somando/mediando todas as plataformas
+    const plats = ['tiktok', 'instagram', 'youtube']
+      .map(p => updatedConta[p])
+      .filter(Boolean);
+
+    if (plats.length) {
+      updatedConta.seguidores = plats.reduce((s, p) => s + (p.seguidores ?? p.inscritos ?? 0), 0);
+      updatedConta.crescimento_semanal = +(plats.reduce((s, p) => s + (p.crescimento_semanal ?? 0), 0) / plats.length).toFixed(1);
+      updatedConta.taxa_engajamento = +(plats.reduce((s, p) => s + (p.taxa_engajamento ?? 0), 0) / plats.length).toFixed(1);
+    }
+
+    await updateMemory({ metricas_conta: updatedConta });
+    await salvarHistoricoMetricas(novas.plataforma, novas);
+    setMetricasDetectadas(null);
+    setSalvandoMetricas(false);
+  };
+
   const temasCobertos = memory?.temas_cobertos?.slice(-10).reverse() || [];
   const arcosAtivos = memory?.arcos_ativos || [];
   const temaProibidosAtivos = (memory?.temas_proibidos || []).filter(t => diasParaExpirar(t.adicionado_em) > 0);
@@ -152,11 +257,106 @@ export default function DataIntelPanel({ onBack }) {
         <p className="intel-subtitle">O Agente Cientista lê seus dados e otimiza a estratégia do CMO automaticamente.</p>
       </div>
 
+      {/* ─── Conexões com plataformas ─── */}
+      <div className="social-connections">
+        <h3 className="social-connections-title">Contas Conectadas</h3>
+        <p className="social-connections-desc">
+          Conecte suas contas para buscar métricas automaticamente. Os tokens ficam seguros no servidor.
+        </p>
+
+        {oauthFeedback && (
+          <div className={`oauth-feedback oauth-feedback--${oauthFeedback.tipo}`}>
+            {oauthFeedback.tipo === 'sucesso' ? '✓' : '✕'} {oauthFeedback.mensagem}
+            <button className="oauth-feedback-close" onClick={() => setOauthFeedback(null)}>×</button>
+          </div>
+        )}
+
+        <div className="social-platforms">
+          {/* YouTube */}
+          {(() => {
+            const ytConectado = plataformasConectadas.find(p => p.platform === 'youtube');
+            return (
+              <div className="social-platform-card">
+                <div className="social-platform-info">
+                  <span className="platform-tag youtube">YouTube</span>
+                  {ytConectado ? (
+                    <span className="social-platform-status connected">
+                      {ytConectado.channel_name || 'Conectado'}
+                    </span>
+                  ) : (
+                    <span className="social-platform-status disconnected">Não conectado</span>
+                  )}
+                </div>
+                <div className="social-platform-actions">
+                  {ytConectado ? (
+                    <>
+                      <button
+                        className="btn-fetch-metrics"
+                        disabled={buscandoMetricasApi}
+                        onClick={() => handleBuscarMetricasApi('youtube')}
+                      >
+                        {buscandoMetricasApi ? 'Buscando...' : 'Atualizar métricas'}
+                      </button>
+                      <button
+                        className="btn-disconnect"
+                        onClick={() => handleDesconectar('youtube')}
+                      >
+                        Desconectar
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      className="btn-connect youtube"
+                      onClick={iniciarOAuthYouTube}
+                    >
+                      Conectar YouTube
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Instagram — em breve */}
+          <div className="social-platform-card social-platform-card--soon">
+            <div className="social-platform-info">
+              <span className="platform-tag instagram">Instagram</span>
+              <span className="social-platform-status disconnected">Em breve</span>
+            </div>
+          </div>
+
+          {/* TikTok — em breve */}
+          <div className="social-platform-card social-platform-card--soon">
+            <div className="social-platform-info">
+              <span className="platform-tag tiktok">TikTok</span>
+              <span className="social-platform-status disconnected">Em breve</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="intel-grid">
         {/* Upload de Dados */}
         <Card className="intel-input-card">
           <h3>📊 Upload de Performance</h3>
-          <p>Dica: Cole as linhas do CSV do Relatório do TikTok/Youtube ou relate manualmente.</p>
+          <p>Selecione a plataforma e cole o CSV exportado. O sistema extrai métricas de conta automaticamente.</p>
+
+          <div className="platform-selector">
+            {[
+              { id: 'tiktok', label: 'TikTok' },
+              { id: 'instagram', label: 'Instagram' },
+              { id: 'youtube', label: 'YouTube' },
+            ].map(p => (
+              <button
+                key={p.id}
+                className={`platform-btn ${plataformaSelecionada === p.id ? 'active' : ''}`}
+                onClick={() => setPlataformaSelecionada(p.id)}
+                disabled={isAnalyzing}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
 
           <textarea
             className="intel-textarea"
@@ -176,6 +376,37 @@ export default function DataIntelPanel({ onBack }) {
           >
             {isAnalyzing ? 'Analisando Padrões...' : 'Gerar Nova Inteligência'}
           </Button>
+
+          {/* Card de métricas detectadas automaticamente */}
+          {metricasDetectadas && (
+            <div className="detected-metrics-card">
+              <h4>Métricas detectadas — {metricasDetectadas.plataforma}</h4>
+              <div className="detected-metrics-grid">
+                {metricasDetectadas.seguidores != null && (
+                  <span>{metricasDetectadas.seguidores.toLocaleString('pt-BR')} {metricasDetectadas.plataforma === 'youtube' ? 'inscritos' : 'seguidores'}</span>
+                )}
+                {metricasDetectadas.crescimento_semanal != null && (
+                  <span>+{metricasDetectadas.crescimento_semanal}% semana</span>
+                )}
+                {metricasDetectadas.taxa_engajamento != null && (
+                  <span>{metricasDetectadas.taxa_engajamento}% engajamento</span>
+                )}
+                {metricasDetectadas.views_7d != null && (
+                  <span>{(metricasDetectadas.views_7d / 1000).toFixed(1)}k views/sem</span>
+                )}
+                {metricasDetectadas.melhor_horario && (
+                  <span>Melhor horário: {metricasDetectadas.melhor_horario}</span>
+                )}
+              </div>
+              <button
+                className="btn-confirm-metrics"
+                disabled={salvandoMetricas}
+                onClick={() => handleConfirmarMetricas(metricasDetectadas)}
+              >
+                {salvandoMetricas ? 'Salvando...' : 'Confirmar e salvar métricas'}
+              </button>
+            </div>
+          )}
         </Card>
 
         {/* Display do Relatório */}
@@ -497,6 +728,30 @@ export default function DataIntelPanel({ onBack }) {
                 <p className="metrics-updated">
                   Última atualização: {new Date(memory.metricas_conta.atualizado_em).toLocaleDateString('pt-BR')}
                 </p>
+              )}
+
+              {/* Breakdown por plataforma (preenchido via CSV) */}
+              {(memory?.metricas_conta?.tiktok || memory?.metricas_conta?.instagram || memory?.metricas_conta?.youtube) && (
+                <div className="platform-breakdown">
+                  {memory.metricas_conta.tiktok && (
+                    <div className="platform-row">
+                      <span className="platform-tag tiktok">TikTok</span>
+                      <span>{(memory.metricas_conta.tiktok.seguidores ?? 0).toLocaleString('pt-BR')} seg · {memory.metricas_conta.tiktok.taxa_engajamento ?? '?'}% eng</span>
+                    </div>
+                  )}
+                  {memory.metricas_conta.instagram && (
+                    <div className="platform-row">
+                      <span className="platform-tag instagram">Instagram</span>
+                      <span>{(memory.metricas_conta.instagram.seguidores ?? 0).toLocaleString('pt-BR')} seg · {memory.metricas_conta.instagram.taxa_engajamento ?? '?'}% eng</span>
+                    </div>
+                  )}
+                  {memory.metricas_conta.youtube && (
+                    <div className="platform-row">
+                      <span className="platform-tag youtube">YouTube</span>
+                      <span>{((memory.metricas_conta.youtube.inscritos ?? memory.metricas_conta.youtube.seguidores ?? 0)).toLocaleString('pt-BR')} inscritos · {memory.metricas_conta.youtube.taxa_engajamento ?? '?'}% eng</span>
+                    </div>
+                  )}
+                </div>
               )}
             </Card>
 

@@ -98,6 +98,22 @@ export async function removeArco(nomeArco) {
   await updateMemory({ arcos_ativos: novos });
 }
 
+// ─── Salva snapshot de métricas no histórico (mantém últimas 24 entradas) ───
+export async function salvarHistoricoMetricas(platform, metricas) {
+  const mem = await getMemory();
+  if (!mem) return;
+  const historico = mem.metricas_historico || [];
+  const snapshot = {
+    data: new Date().toISOString().slice(0, 10),
+    plataforma: platform,
+    seguidores: metricas.seguidores ?? null,
+    crescimento_semanal: metricas.crescimento_semanal ?? null,
+    taxa_engajamento: metricas.taxa_engajamento ?? null,
+  };
+  const next = [...historico, snapshot].slice(-24);
+  await updateMemory({ metricas_historico: next });
+}
+
 // ─── Gera string formatada para injeção nos prompts ───
 export async function getContextoParaCMO() {
   const mem = await getMemory();
@@ -121,11 +137,17 @@ export async function getContextoParaCMO() {
     ? `CICLO (últimos 14 dias): ${nCrescimento} crescimento + ${nMencaoSuave} menção suave + ${nConversao} conversão → VOCÊ PODE/DEVE incluir ${conversoesPendentes} post(s) de conversão neste plano.`
     : `CICLO (últimos 14 dias): ${nCrescimento} crescimento + ${nMencaoSuave} menção suave + ${nConversao} conversão → equilibrado. Priorize crescimento agora.`;
 
-  // ─── Métricas de conta ───
+  // ─── Métricas de conta (agregado + breakdown por plataforma) ───
   const m = mem.metricas_conta || {};
-  const metricasMsg = m.seguidores
-    ? `MÉTRICAS DA CONTA: ${m.seguidores} seguidores | +${m.crescimento_semanal ?? '?'}% semana | ${m.taxa_engajamento ?? '?'}% engajamento`
-    : '';
+  let metricasMsg = '';
+  if (m.seguidores) {
+    metricasMsg = `MÉTRICAS DA CONTA: ${m.seguidores} seguidores totais | +${m.crescimento_semanal ?? '?'}% semana | ${m.taxa_engajamento ?? '?'}% engajamento`;
+    const linhasPlat = [];
+    if (m.tiktok?.seguidores) linhasPlat.push(`  TikTok: ${m.tiktok.seguidores} seg | +${m.tiktok.crescimento_semanal ?? '?'}% | ${m.tiktok.taxa_engajamento ?? '?'}% eng${m.tiktok.views_7d ? ` | ${(m.tiktok.views_7d/1000).toFixed(1)}k views/sem` : ''}`);
+    if (m.instagram?.seguidores) linhasPlat.push(`  Instagram: ${m.instagram.seguidores} seg | +${m.instagram.crescimento_semanal ?? '?'}% | ${m.instagram.taxa_engajamento ?? '?'}% eng`);
+    if (m.youtube?.inscritos ?? m.youtube?.seguidores) linhasPlat.push(`  YouTube: ${m.youtube.inscritos ?? m.youtube.seguidores} inscritos | +${m.youtube.crescimento_semanal ?? '?'}% | ${m.youtube.taxa_engajamento ?? '?'}% eng`);
+    if (linhasPlat.length) metricasMsg += '\n' + linhasPlat.join('\n');
+  }
 
   // ─── Temas proibidos (remove expirados) ───
   const proibidosAtivos = (mem.temas_proibidos || []).filter(t => {

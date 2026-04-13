@@ -639,6 +639,300 @@
   cursor: not-allowed;
 }
 
+/* ─── Conexões com plataformas ─── */
+.social-connections {
+  margin-bottom: var(--space-8);
+  padding: var(--space-6);
+  background: var(--bg-elevated);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-lg);
+}
+
+.social-connections-title {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--space-1);
+}
+
+.social-connections-desc {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  margin-bottom: var(--space-4);
+}
+
+.social-platforms {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.social-platform-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-primary);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  gap: var(--space-4);
+}
+
+.social-platform-card--soon {
+  opacity: 0.45;
+}
+
+.social-platform-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.social-platform-status {
+  font-size: var(--text-sm);
+}
+
+.social-platform-status.connected {
+  color: #22c55e;
+  font-weight: 500;
+}
+
+.social-platform-status.disconnected {
+  color: var(--text-muted);
+}
+
+.social-platform-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.btn-connect {
+  padding: var(--space-2) var(--space-4);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.btn-connect.youtube {
+  background: #FF0000;
+  color: white;
+}
+
+.btn-connect:hover {
+  opacity: 0.85;
+}
+
+.btn-fetch-metrics {
+  padding: var(--space-2) var(--space-4);
+  background: var(--bg-elevated);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-fetch-metrics:hover:not(:disabled) {
+  background: var(--bg-tertiary);
+  border-color: var(--surface-border-hover);
+}
+
+.btn-fetch-metrics:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-disconnect {
+  padding: var(--space-2) var(--space-3);
+  background: transparent;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: var(--radius-sm);
+  color: var(--error);
+  font-size: var(--text-xs);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-disconnect:hover {
+  background: rgba(239, 68, 68, 0.08);
+}
+
+/* Feedback OAuth */
+.oauth-feedback {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-4);
+}
+
+.oauth-feedback--sucesso {
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  color: #22c55e;
+}
+
+.oauth-feedback--erro {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: var(--error);
+}
+
+.oauth-feedback-close {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: var(--text-lg);
+  line-height: 1;
+  opacity: 0.7;
+  padding: 0;
+}
+
+.oauth-feedback-close:hover {
+  opacity: 1;
+}
+
+/* ─── Seletor de plataforma ─── */
+.platform-selector {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.platform-btn {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  transition: all 0.15s;
+}
+
+.platform-btn:hover:not(:disabled) {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+.platform-btn.active {
+  background: var(--brand-primary);
+  color: white;
+  border-color: var(--brand-primary);
+}
+
+.platform-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ─── Card de métricas detectadas ─── */
+.detected-metrics-card {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--brand-primary);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.detected-metrics-card h4 {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--brand-primary);
+  margin: 0 0 var(--space-3);
+  text-transform: capitalize;
+}
+
+.detected-metrics-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.detected-metrics-grid span {
+  background: var(--bg-elevated);
+  border: 1px solid var(--surface-border);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.btn-confirm-metrics {
+  width: 100%;
+  padding: var(--space-2) var(--space-4);
+  background: var(--brand-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  transition: opacity 0.15s;
+}
+
+.btn-confirm-metrics:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.btn-confirm-metrics:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ─── Breakdown por plataforma ─── */
+.platform-breakdown {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--surface-border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.platform-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.platform-tag {
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-full);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  flex-shrink: 0;
+}
+
+.platform-tag.tiktok {
+  background: #010101;
+  color: white;
+}
+
+.platform-tag.instagram {
+  background: #E1306C;
+  color: white;
+}
+
+.platform-tag.youtube {
+  background: #FF0000;
+  color: white;
+}
+
 /* ─── Métricas da conta ─── */
 .metrics-card {
   border-left: 3px solid var(--accent);
